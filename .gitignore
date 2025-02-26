@@ -170,3 +170,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 ORIGINAL.ipynb
+.DS_store
