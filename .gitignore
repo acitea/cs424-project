@@ -171,3 +171,4 @@ cython_debug/
 .pypirc
 ORIGINAL.ipynb
 .DS_store
+**/*.jpg
