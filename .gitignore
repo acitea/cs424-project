@@ -172,3 +172,8 @@ cython_debug/
 ORIGINAL.ipynb
 .DS_store
 **/*.jpg
+**/*.png
+**/*.jpeg
+**/*.pth
+**/*.pdf
+**/*.csv
