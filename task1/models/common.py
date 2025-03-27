@@ -29,13 +29,13 @@ class SelfAttention(nn.Module):
     
 
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, stride=3):
         super().__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.Conv2d(channels, channels, stride, padding=1),
             nn.InstanceNorm2d(channels),
             nn.ReLU(True),
-            nn.Conv2d(channels, channels, 3, padding=1),
+            nn.Conv2d(channels, channels, stride, padding=1),
             nn.InstanceNorm2d(channels)
         )
         
