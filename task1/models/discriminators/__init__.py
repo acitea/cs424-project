@@ -1,6 +1,6 @@
-from .patch import PatchDiscriminator
+from .patch import PatchDiscriminator, NLayerDiscriminator, GithubDiscriminator
 from .patchSpectral import PatchGANDiscriminator as PatchSpectralDiscriminator
 from .random_kaggle import RandomKaggleDiscriminator
-# from .resnet import CustomDiscriminator
+from .default import Discriminator as DefaultDiscriminator
 
-__all__ = ["PatchDiscriminator", "PatchSpectralDiscriminator", "RandomKaggleDiscriminator"]
+__all__ = ["PatchDiscriminator", "PatchSpectralDiscriminator", "NLayerDiscriminator", "GithubDiscriminator", "RandomKaggleDiscriminator", "DefaultDiscriminator"]
