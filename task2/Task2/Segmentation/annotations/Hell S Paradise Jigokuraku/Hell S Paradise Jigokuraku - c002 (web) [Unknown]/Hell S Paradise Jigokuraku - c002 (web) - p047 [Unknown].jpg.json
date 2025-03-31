@@ -1,0 +1,1 @@
+{"bbox_annotations": {"bboxes_as_x1y1x2y2": [[575.6160888671875, 512.9889526367188, 786.4181518554688, 982.7887573242188], [72.78499603271484, -8.20927619934082, 808.0567626953125, 1191.7294921875]], "labels": [1, 2], "image_id": 998}, "character_clusters": [], "text_char_matches": [], "text_tail_matches": [], "text_classification": [1], "character_names": []}
