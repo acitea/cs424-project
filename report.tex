@@ -1,0 +1,191 @@
+\documentclass[twoside,english,notitlepage]{report}
+
+\usepackage{geometry}
+\usepackage{lipsum}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{cite}
+\usepackage{hyperref}
+\usepackage{mathbbol}
+
+\geometry{
+    a4paper,
+    total={170mm,257mm},
+    left=20mm,
+    top=10mm,
+}
+
+\makeatletter
+\def\@makechapterhead#1{%
+    \vspace*{0\p@}%                                 % Insert 50pt (vertical) space
+    {\parindent \z@ \raggedright \normalfont         % No paragraph indent, ragged right
+    \ifnum \c@secnumdepth >\m@ne                   % If you should number chapters
+        % \if@mainmatter                               % ... and you're in \mainmatter
+        % \huge\bfseries \@chapapp\space \thechapter % huge, bold, Chapter + number – this is original
+        \Huge\bfseries \thechapter.\space%
+        % \par\nobreak                               % paragraph break without page break
+        % \vskip 20\p@                               % Insert 20pt (vertical) space
+    \fi
+    \interlinepenalty\@M                           % Penalty
+    \Huge \bfseries #1\par\nobreak                 % Huge, bold chapter title
+    \vskip 30\p@                                   % Insert 40pt (vertical) space
+}}
+\makeatother
+
+
+\title{CS424 – Group Project Report}
+\author{
+    Akeela Darryl Fattha\\
+    \texttt{akeelaf.2022@scis.smu.edu.sg}
+    \and
+    Fadhel Erlangga Wibawanto\\
+    \texttt{fadhelew.2022@scis.smu.edu.sg}
+    \and
+    Tan Zhi Rong\\
+    \texttt{zhirong.tan.2022@scis.smu.edu.sg}
+    \and
+    Grace Angel Bisawan \\
+    \texttt{gbisawan.2022@scis.smu.edu.sg}
+    \and
+    Lee Jia Heng\\
+    \texttt{jiaheng.lee.2023@scis.smu.edu.sg}
+}
+
+\begin{document}
+\date{}
+\maketitle
+\begin{abstract}
+This report provides an overview of Cycle-Consistent Adversarial Networks (CycleGAN), a technique for unpaired image-to-image translation. We explore the architecture, key innovations, applications, and limitations of CycleGAN models in computer vision tasks.
+\end{abstract}
+\tableofcontents
+
+
+\chapter{Task 1}
+
+\section{Introduction}
+Image-to-image translation is the task of converting an image from one domain to another. CycleGAN, introduced by Zhu et al. in 2017, addresses the challenge of learning such translations without paired training data. This makes it particularly useful for applications where paired examples are difficult or impossible to obtain.
+
+\subsection{Configuration}
+
+
+
+
+
+\section{Architecture}
+\subsection{Discriminator}
+GANs consist of two networks: a generator that creates images and a discriminator that evaluates them. The two networks are trained adversarially, with the generator trying to fool the discriminator.
+
+\subsection{Generator}
+CycleGAN extends the GAN framework by using two generator-discriminator pairs, allowing translation between domains X and Y. The key innovation is the cycle-consistency loss, which ensures that translating an image to the target domain and back produces the original image.
+
+
+\section{Data Preparation}
+\subsection{Augmentations}
+Add info that we didn't use any augmentations
+Size used was 256x256
+
+
+\subsection{Training/Validation}
+A simple 80/20 split on training data with validation
+
+
+
+\section{Loss Functions}
+Our overall loss functions for CycleGAN are as follows:
+
+
+\begin{equation}
+    L_{total} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{edge} L_{edge} + \lambda_{color} L_{color}
+\end{equation}
+
+\subsection{Discriminator}
+\subsubsection{Patch}
+
+\subsubsection{Least Squares}
+
+\subsection{Generator}
+
+\subsubsection{Adversarial}
+Use basic 
+
+\subsubsection{Cycle Consistency}
+
+\subsubsection{Identity}
+
+\subsubsection{Edge Consistency}
+
+\subsubsection{Color Consistency}
+
+\subsection{Adaptive Loss Weighting}
+
+
+
+
+
+
+\chapter{Task 2}
+\section{Introduction}
+
+
+
+\subsection{Configuration}
+
+
+
+\section{Architecture}
+\subsection{Discriminator}
+GANs consist of two networks: a generator that creates images and a discriminator that evaluates them. The two networks are trained adversarially, with the generator trying to fool the discriminator.
+
+\subsection{Generator}
+CycleGAN extends the GAN framework by using two generator-discriminator pairs, allowing translation between domains X and Y. The key innovation is the cycle-consistency loss, which ensures that translating an image to the target domain and back produces the original image.
+
+
+\section{Data Preparation}
+\subsection{Pre-Processing}
+
+
+\subsection{Training/Validation}
+A simple 80/20 split on training data with validation
+
+
+
+\section{Loss Functions}
+Our overall loss functions for CycleGAN are as follows:
+
+
+\begin{equation}
+    L_{total} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{edge} L_{edge} + \lambda_{color} L_{color}
+\end{equation}
+
+\subsection{Discriminator}
+\subsubsection{Patch}
+
+\subsubsection{Least Squares}
+
+\subsection{Generator}
+
+\subsubsection{Adversarial}
+Use basic 
+
+\subsubsection{Cycle Consistency}
+
+\subsubsection{Identity}
+
+\subsubsection{Edge Consistency}
+
+\subsubsection{Color Consistency}
+
+\subsection{Adaptive Loss Weighting}
+
+
+
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{references}  % Create a references.bib file with your citations
+
+\end{document}
