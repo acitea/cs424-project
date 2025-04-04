@@ -83,9 +83,11 @@ CycleGAN extends the GAN framework by using two generator-discriminator pairs, a
 
 \section{Data Preparation}
 \subsection{Augmentations}
-Add info that we didn't use any augmentations
-Size used was 256x256
+\paragraph{} We started with resizing images to 128x128, paired with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations.
 
+\paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were just slightly more "noisy" than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more "flat" looking than the target images, losing a lot more of the finer details and textures. 
+
+\paragraph{} Thus, in both cases, we felt that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. 
 
 \subsection{Training/Validation}
 A simple 80/20 split on training data with validation
@@ -102,23 +104,30 @@ Our overall loss functions for CycleGAN are as follows:
 
 \subsection{Discriminator}
 \subsubsection{Patch}
+We use a PatchGAN discriminator, which classifies whether 70x70 overlapping image patches are real or fake. This allows the model to focus on local image features and helps in generating high-quality images.
 
-\subsubsection{Least Squares}
+\subsubsection{Adversarial}
+We use a basic BCE loss as well bruh.
 
 \subsection{Generator}
 
 \subsubsection{Adversarial}
-Use basic 
+Use basic BCE loss to compare between predicted \& real predictions. 
 
 \subsubsection{Cycle Consistency}
+Basic L1 loss to ensure that it tries to get back to where it started exactly. 
 
 \subsubsection{Identity}
+We use a combination of MSE and Edge Consistency loss to determine our identity loss. We put additional weight on Edge Consistency as it is extremely important to maintain the edges of the image, especially when it comes to maintaining the structure of a "face". However, to ensure that the model keeps within the color distribution \& looks of the original image, we include MSE loss as well. 
 
 \subsubsection{Edge Consistency}
+As mentioned, this loss is used to determine whether the structure of the images are maintained. Firstly, we grayscaled our images as color is not our priority for this loss computation. Next, we use sobel kernels to determine the edges of the images, which will be passed to a structural similariy computation function by Piqa. 
 
 \subsubsection{Color Consistency}
 
+
 \subsection{Adaptive Loss Weighting}
+We also incorporate adaptive loss weighting to alter the compositions of the different loss functions according to how far along the training we are. During early training, it is more important to focus on the cycle consistency loss, as the model is still learning the basic structure of the images. As training progresses, we shift the focus towards the adversarial loss and identity loss to refine the generated images and ensure they closely resemble the target domain.
 
 
 
