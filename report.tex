@@ -75,10 +75,54 @@ Image-to-image translation is the task of converting an image from one domain to
 
 \section{Architecture}
 \subsection{Discriminator}
-GANs consist of two networks: a generator that creates images and a discriminator that evaluates them. The two networks are trained adversarially, with the generator trying to fool the discriminator.
+\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 4 times, from 64 to 512. Each convolution output is passed to a spectral norm layer and a leaky relu activation function. 
+
+\paragraph{} We also made use of a PatchGAN discriminator, accumulate whether these patches can be used to determine if the image is real or fake.
 
 \subsection{Generator}
-CycleGAN extends the GAN framework by using two generator-discriminator pairs, allowing translation between domains X and Y. The key innovation is the cycle-consistency loss, which ensures that translating an image to the target domain and back produces the original image.
+\paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
+
+\paragraph{} Some general key design choices include:
+\begin{itemize}
+    \item \textbf{Instance Normalization:} Used throughout the network instead of batch normalization, as it has been shown to produce better results for style transfer and image-to-image translation by normalizing each instance independently.
+
+    \item \textbf{Reflection Padding:} Applied before convolutions to reduce boundary artifacts that can appear in generated images, particularly important for maintaining realistic edges.
+
+    \item \textbf{Mixed Residual Blocks:} The strategic placement of different residual block types allows the network to benefit from complementary approaches to feature transformation:
+    \begin{itemize}
+        \item Style-modulated blocks provide explicit control over stylistic elements
+        \item CBAM-enhanced blocks in the middle layers help focus on important features
+        \item All blocks benefit from SE attention for channel recalibration
+    \end{itemize}
+    
+    \item \textbf{Squeeze-and-Excitation Attention:} Used in Mixed Residual Blocks, it recalibrates channel-wise feature responses by explicitly modeling interdependencies between channels, allowing the network to selectively emphasize informative features.
+
+    \item \textbf{Enhanced Self-Attention:} Positioned after the residual blocks, it helps ensure global coherence in the generated images by modeling long-range dependencies that convolutional operations cannot capture efficiently.
+
+\end{itemize}
+
+\paragraph{ImprovedResidualBlock:} These blocks enhance the standard residual connection with both SE attention and conditional CBAM:
+
+CBAM is applied to blocks 3-6, providing dual attention mechanisms:
+\begin{itemize}
+    \item \textbf{Channel Attention:} Models interdependencies between channels using both max and average pooling operations.
+    \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.
+\end{itemize}
+
+\paragraph{StyleModulatedResBlock:} Every third residual block employs style modulation through Adaptive Instance Normalization:
+\begin{align}
+    \text{AdaIN}(x) = \gamma \cdot \frac{x - \mu(x)}{\sigma(x)} + \beta
+\end{align}
+
+where $\gamma$ and $\beta$ are learnable style scale and bias parameters. This allows the network to better control stylistic elements in the generated images.
+
+\subsubsection{Enhanced Self-Attention}
+After the residual blocks, an enhanced self-attention module is applied:
+\begin{align}
+    \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T + P}{\sqrt{d_k}}\right)V
+\end{align}
+
+where $P$ represents the positional bias that emphasizes the central region. This self-attention mechanism allows the network to model long-range dependencies and coherence in the image, which is particularly valuable for maintaining structural integrity in facial regions.
 
 
 \section{Data Preparation}
