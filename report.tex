@@ -107,57 +107,33 @@ All optimisers used Adam with the following hyperparameters and loss weights:
 \subsection{Discriminator}
 \paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.8\textwidth]{task1/discriminator-architecture.pdf}
-\end{figure}
 
 \subsection{Generator}
 \paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
 
-\paragraph{} Some general key design choices include:
+Some of our key design choices:
 \begin{itemize}
     \item \textbf{Instance Normalization:} Used throughout the network instead of batch normalization, as it has been shown to produce better results for style transfer and image-to-image translation by normalizing each instance independently.
 
     \item \textbf{Reflection Padding:} Applied before convolutions to reduce boundary artifacts that can appear in generated images, particularly important for maintaining realistic edges.
 
-    \item \textbf{Mixed Residual Blocks:} The strategic placement of different residual block types allows the network to benefit from complementary approaches to feature transformation:
-
+    \item \textbf{Mixed + Improved Residual Blocks:} The strategic placement of different residual block types allows the network to benefit from complementary approaches to feature transformation. They also exhibit the following characteristics and sub-blocks:
     \begin{itemize}
-        \item Style-modulated blocks provide explicit control over stylistic elements
-        \item CBAM-enhanced blocks in the middle layers help focus on important features
+        \item \textbf{Channel Attention:} Models interdependencies between channels using both max and average pooling operations.
+        \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.v
         \item All blocks benefit from SE attention for channel recalibration
     \end{itemize}
 
     \item \textbf{Squeeze-and-Excitation Attention:} Used in Mixed Residual Blocks, it recalibrates channel-wise feature responses by explicitly modeling interdependencies between channels, allowing the network to selectively emphasize informative features.
 
-    \item \textbf{Enhanced Self-Attention:} Positioned after the residual blocks, it helps ensure global coherence in the generated images by modeling long-range dependencies that convolutional operations cannot capture efficiently.
+    \item \textbf{Enhanced Self-Attention:} Positioned after the residual blocks, it helps ensure global coherence in the generated images by modeling long-range dependencies that convolutional operations cannot capture efficiently. This is particularly valuable for maintaining structural integrity in facial regions.
 
 \end{itemize}
 
-\paragraph{Improved Residual Block:} These blocks enhance the standard residual connection with both SE attention and conditional CBAM:
-
-CBAM is applied to blocks 3-6, providing dual attention mechanisms:
-\begin{itemize}
-    \item \textbf{Channel Attention:} Models interdependencies between channels using both max and average pooling operations.
-    \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.
-\end{itemize}
-
-\paragraph{Style Modulated ResBlock:} Every third residual block employs style modulation through Adaptive Instance Normalization:
-\begin{align}
-    \text{AdaIN}(x) = \gamma \cdot \frac{x - \mu(x)}{\sigma(x)} + \beta
-\end{align}
-
-where $\gamma$ and $\beta$ are learnable style scale and bias parameters. This allows the network to better control stylistic elements in the generated images.
-
-\subsubsection{Enhanced Self-Attention}
-After the residual blocks, an enhanced self-attention module is applied:
-\begin{align}
-    \text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T + P}{\sqrt{d_k}}\right)V
-\end{align}
-
-where $P$ represents the positional bias that emphasizes the central region. This self-attention mechanism allows the network to model long-range dependencies and coherence in the image, which is particularly valuable for maintaining structural integrity in facial regions.
-
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{task1/discriminator-architecture.pdf}
+\end{figure}
 
 \section{Data Preparation}
 \subsection{Augmentations}
