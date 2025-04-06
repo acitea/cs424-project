@@ -79,6 +79,9 @@ Image-to-image translation is the task of converting an image from one domain to
 
 \paragraph{} We also made use of a PatchGAN discriminator, accumulate whether these patches can be used to determine if the image is real or fake.
 
+inspired by Pix2Pix, patchGAN true/false, global true/false, and feature output fed into generator. 
+
+
 \subsection{Generator}
 \paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
 
@@ -89,12 +92,13 @@ Image-to-image translation is the task of converting an image from one domain to
     \item \textbf{Reflection Padding:} Applied before convolutions to reduce boundary artifacts that can appear in generated images, particularly important for maintaining realistic edges.
 
     \item \textbf{Mixed Residual Blocks:} The strategic placement of different residual block types allows the network to benefit from complementary approaches to feature transformation:
+
     \begin{itemize}
         \item Style-modulated blocks provide explicit control over stylistic elements
         \item CBAM-enhanced blocks in the middle layers help focus on important features
         \item All blocks benefit from SE attention for channel recalibration
     \end{itemize}
-    
+
     \item \textbf{Squeeze-and-Excitation Attention:} Used in Mixed Residual Blocks, it recalibrates channel-wise feature responses by explicitly modeling interdependencies between channels, allowing the network to selectively emphasize informative features.
 
     \item \textbf{Enhanced Self-Attention:} Positioned after the residual blocks, it helps ensure global coherence in the generated images by modeling long-range dependencies that convolutional operations cannot capture efficiently.
@@ -127,16 +131,16 @@ where $P$ represents the positional bias that emphasizes the central region. Thi
 
 \section{Data Preparation}
 \subsection{Augmentations}
-\paragraph{} We started with resizing images to 128x128, paired with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations.
+\paragraph{} We started with resizing images to 128x128, paired with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations. 
 
-\paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were just slightly more "noisy" than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more "flat" looking than the target images, losing a lot more of the finer details and textures. 
+\paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. 
 
 \paragraph{} Thus, in both cases, we felt that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. 
 
 \subsection{Training/Validation}
-A simple 80/20 split on training data with validation
+\paragraph{} We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model.
 
-
+\paragraph{} We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}
 Our overall loss functions for CycleGAN are as follows:
@@ -147,34 +151,24 @@ Our overall loss functions for CycleGAN are as follows:
 \end{equation}
 
 \subsection{Discriminator}
-\subsubsection{Patch}
-We use a PatchGAN discriminator, which classifies whether 70x70 overlapping image patches are real or fake. This allows the model to focus on local image features and helps in generating high-quality images.
 
-\subsubsection{Adversarial}
-We use a basic BCE loss as well bruh.
+\subsubsection{Gradient Penalty}
+We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnotetext{Arjovsky, M., Chintala, S., & Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} which improves stability of training, avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator. 
+
+\subsubsection{Relativistic}
+We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN
+
+Use basic BCE loss to compare between predicted \& real predictions, on top of MSE for the Patch  
 
 \subsection{Generator}
-
-\subsubsection{Adversarial}
-Use basic BCE loss to compare between predicted \& real predictions. 
-
 \subsubsection{Cycle Consistency}
 Basic L1 loss to ensure that it tries to get back to where it started exactly. 
 
 \subsubsection{Identity}
 We use a combination of MSE and Edge Consistency loss to determine our identity loss. We put additional weight on Edge Consistency as it is extremely important to maintain the edges of the image, especially when it comes to maintaining the structure of a "face". However, to ensure that the model keeps within the color distribution \& looks of the original image, we include MSE loss as well. 
 
-\subsubsection{Edge Consistency}
-As mentioned, this loss is used to determine whether the structure of the images are maintained. Firstly, we grayscaled our images as color is not our priority for this loss computation. Next, we use sobel kernels to determine the edges of the images, which will be passed to a structural similariy computation function by Piqa. 
-
-\subsubsection{Color Consistency}
-
-
-\subsection{Adaptive Loss Weighting}
-We also incorporate adaptive loss weighting to alter the compositions of the different loss functions according to how far along the training we are. During early training, it is more important to focus on the cycle consistency loss, as the model is still learning the basic structure of the images. As training progresses, we shift the focus towards the adversarial loss and identity loss to refine the generated images and ensure they closely resemble the target domain.
-
-
-
+\subsubsection{Feature}
+MSE over the feature map of the Discriminator input
 
 
 
@@ -197,6 +191,11 @@ CycleGAN extends the GAN framework by using two generator-discriminator pairs, a
 
 \section{Data Preparation}
 \subsection{Pre-Processing}
+Used ChatGPT to generate a list of mapping of animal to pokemon variations
+
+
+used a pretrained vgg16 to remove background for animals
+
 
 
 \subsection{Training/Validation}
