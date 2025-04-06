@@ -10,6 +10,8 @@
 \usepackage{hyperref}
 \usepackage{mathbbol}
 \usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{multicol}
 
 \geometry{
     a4paper,
@@ -81,11 +83,23 @@ With our enhancements, we achieved the following results:
     \end{tabular}
 \end{table}
 
-\subsection{Configuration}
+\subsection{Configuration \& Hyperparameters}
+All optimisers used Adam with the following hyperparameters and loss weights:
 
-Seed used
-Python version
-
+\begin{multicols}{2}
+    \begin{itemize}
+        \item Random seed: 42
+        \item Torch seed: 16109772023028774379
+        \item n epochs: 100
+        \item learning rate: 2e-4
+        \item betas: (0.5, 0.999)
+        \item $\lambda_{cyc}$: 10.0
+        \item $\lambda_{id}$: 5.0
+        \item $\lambda_{gan}$: 1.0
+        \item $\lambda_{gp}$: 10.0
+        \item $\lambda_{fm}$: 5.0
+    \end{itemize}
+\end{multicols}
 
 
 
@@ -121,7 +135,7 @@ Python version
 
 \end{itemize}
 
-\paragraph{ImprovedResidualBlock:} These blocks enhance the standard residual connection with both SE attention and conditional CBAM:
+\paragraph{Improved Residual Block:} These blocks enhance the standard residual connection with both SE attention and conditional CBAM:
 
 CBAM is applied to blocks 3-6, providing dual attention mechanisms:
 \begin{itemize}
@@ -129,7 +143,7 @@ CBAM is applied to blocks 3-6, providing dual attention mechanisms:
     \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.
 \end{itemize}
 
-\paragraph{StyleModulatedResBlock:} Every third residual block employs style modulation through Adaptive Instance Normalization:
+\paragraph{Style Modulated ResBlock:} Every third residual block employs style modulation through Adaptive Instance Normalization:
 \begin{align}
     \text{AdaIN}(x) = \gamma \cdot \frac{x - \mu(x)}{\sigma(x)} + \beta
 \end{align}
@@ -151,7 +165,19 @@ where $P$ represents the positional bias that emphasizes the central region. Thi
 
 \paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. 
 
-\paragraph{} Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 4. The results of which can be seen in Figure ??. 
+\paragraph{} Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 4. 
+
+\vspace{20pt}
+\begin{minipage}[t]{.47\textwidth}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[scale=0.22]{task1/top1.jpg}}
+    256x256 images Avg GMS: 3.85666
+\end{minipage}
+\begin{minipage}[t]{.47\textwidth}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[scale=0.22]{task1/top2.jpg}}
+    128x128 images Avg GMS: 4.47829
+\end{minipage}
 
 \subsection{Training/Validation}
 \paragraph{} We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results.
@@ -159,26 +185,20 @@ where $P$ represents the positional bias that emphasizes the central region. Thi
 \paragraph{} We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}
-Our overall loss functions for CycleGAN are as follows:
-
-
-\begin{equation}
-    L_{total} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{edge} L_{edge} + \lambda_{color} L_{color}
-\end{equation}
 
 \subsection{Discriminator Losses}
-We used a combination of loss functions beyond the standard adversarial loss to improve the performance of our discriminator. The overall loss function for the discriminator is as follows:
+We used a combination of loss functions beyond the standard adversarial loss to improve the performance of our discriminator. Our overall loss function for the discriminator is as follows:
 \begin{equation}
     L_{D} = L_{GAN} + \lambda_{gp} L_{gp}
 \end{equation}
 
-\subsubsection{Gradient Penalty}
+\subsubsection{Gradient Penalty – $L_{gp}$}
 We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} which improves stability of training, avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator.
 
 \subsubsection{Relativistic – $L_{GAN}$}
-We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equatino for the relativistic loss is as follows:
+We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equation for our relativistic loss for our "real" side is as follows, and the opposite will be applied for the "fake" side i.e. $D_{real} <=> D_{fake}, True <=> False$:
 \begin{equation}
-    L_{GAN} = \frac{1}{2} \left( \mathbb{E}_{x \sim p_{data}(x)}\left[\left(D(x) - \mathbb{E}_{x' \sim p_{G}(x')}\left[D(x')\right]\right)^2\right] + \mathbb{E}_{x' \sim p_{G}(x')}\left[\left(D(x') - \mathbb{E}_{x \sim p_{data}(x)}\left[D(x)\right]\right)^2\right]\right)
+    L_{GAN} = 0.7 \cdot MSE(D_{real} - \bar{D}_{fake}, True)_{patch} + 0.3 \cdot BCE(D_{real} - \bar{D}_{fake}, True)_{global}
 \end{equation}
 
 \subsection{Generator Losses}
@@ -192,7 +212,7 @@ As we would like the fake images to be able revertible to its original image i.e
 \subsubsection{Identity – $L_{id}$}
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
-Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using MSE loss, which helps to ensure that the generated images are perceptually similar to the target images. 
+Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
 \chapter{Task 2}
 \section{Introduction}
