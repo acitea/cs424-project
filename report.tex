@@ -9,6 +9,7 @@
 \usepackage{cite}
 \usepackage{hyperref}
 \usepackage{mathbbol}
+\usepackage{multirow}
 
 \geometry{
     a4paper,
@@ -65,22 +66,37 @@ This report provides an overview of Cycle-Consistent Adversarial Networks (Cycle
 \chapter{Task 1}
 
 \section{Introduction}
-Image-to-image translation is the task of converting an image from one domain to another. CycleGAN, introduced by Zhu et al. in 2017, addresses the challenge of learning such translations without paired training data. This makes it particularly useful for applications where paired examples are difficult or impossible to obtain.
+We attempt to create a CyleGAN using novel and modern techniques to improve the performance of the model to convert cartoon faces to realistic faces, and vice-versa. We will be using improved blocks, various attention mechanisms and normalisation techniques in our generators, as well as additional loss functions to better guide the models to learn the mapping between the two domains. We opted not to use any augmentations to our images, and we use an image size of 256x256 as our input/output size. \\\\
+With our enhancements, we achieved the following results:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \textbf{} & \textbf{FID} & \textbf{IS} & \textbf{GMS} & \textbf{Avg GMS} \\
+    \cline{1-5}
+    Raw to Cartoon     & 46.70193     & 2.41466 ± 0.24392   & 4.39783    & \multirow{2}{*}{3.85666} \\
+    Cartoon to Raw     & 39.83461         & 3.62382 ± 0.23992        & 3.31548        &            \\
+    \hline
+    \end{tabular}
+\end{table}
 
 \subsection{Configuration}
 
+Seed used
+Python version
 
 
 
 
 \section{Architecture}
 \subsection{Discriminator}
-\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 4 times, from 64 to 512. Each convolution output is passed to a spectral norm layer and a leaky relu activation function. 
+\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
 
-\paragraph{} We also made use of a PatchGAN discriminator, accumulate whether these patches can be used to determine if the image is real or fake.
-
-inspired by Pix2Pix, patchGAN true/false, global true/false, and feature output fed into generator. 
-
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{task1/discriminator-architecture.pdf}
+\end{figure}
 
 \subsection{Generator}
 \paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
@@ -135,10 +151,10 @@ where $P$ represents the positional bias that emphasizes the central region. Thi
 
 \paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. 
 
-\paragraph{} Thus, in both cases, we felt that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. 
+\paragraph{} Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 4. The results of which can be seen in Figure ??. 
 
 \subsection{Training/Validation}
-\paragraph{} We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model.
+\paragraph{} We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results.
 
 \paragraph{} We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
@@ -150,27 +166,33 @@ Our overall loss functions for CycleGAN are as follows:
     L_{total} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{edge} L_{edge} + \lambda_{color} L_{color}
 \end{equation}
 
-\subsection{Discriminator}
+\subsection{Discriminator Losses}
+We used a combination of loss functions beyond the standard adversarial loss to improve the performance of our discriminator. The overall loss function for the discriminator is as follows:
+\begin{equation}
+    L_{D} = L_{GAN} + \lambda_{gp} L_{gp}
+\end{equation}
 
 \subsubsection{Gradient Penalty}
-We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnotetext{Arjovsky, M., Chintala, S., & Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} which improves stability of training, avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator. 
+We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} which improves stability of training, avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator.
 
-\subsubsection{Relativistic}
-We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN
+\subsubsection{Relativistic – $L_{GAN}$}
+We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equatino for the relativistic loss is as follows:
+\begin{equation}
+    L_{GAN} = \frac{1}{2} \left( \mathbb{E}_{x \sim p_{data}(x)}\left[\left(D(x) - \mathbb{E}_{x' \sim p_{G}(x')}\left[D(x')\right]\right)^2\right] + \mathbb{E}_{x' \sim p_{G}(x')}\left[\left(D(x') - \mathbb{E}_{x \sim p_{data}(x)}\left[D(x)\right]\right)^2\right]\right)
+\end{equation}
 
-Use basic BCE loss to compare between predicted \& real predictions, on top of MSE for the Patch  
+\subsection{Generator Losses}
+The generator also makes use of the \textbf{Relativistic} loss, which is an extension of the standard adversarial GAN loss. Our overall loss function for the generator is as follows:
+\begin{equation}
+    L_{G} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{feat} L_{feat}
+\end{equation}
+\subsubsection{Cycle Consistency – $L_{cyc}$}
+As we would like the fake images to be able revertible to its original image i.e. the pixels are identical, we maintain using L1 Loss for our Cycle Consistency.
 
-\subsection{Generator}
-\subsubsection{Cycle Consistency}
-Basic L1 loss to ensure that it tries to get back to where it started exactly. 
-
-\subsubsection{Identity}
-We use a combination of MSE and Edge Consistency loss to determine our identity loss. We put additional weight on Edge Consistency as it is extremely important to maintain the edges of the image, especially when it comes to maintaining the structure of a "face". However, to ensure that the model keeps within the color distribution \& looks of the original image, we include MSE loss as well. 
-
-\subsubsection{Feature}
-MSE over the feature map of the Discriminator input
-
-
+\subsubsection{Identity – $L_{id}$}
+Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
+\subsubsection{Feature – $L_{feat}$}
+Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using MSE loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
 \chapter{Task 2}
 \section{Introduction}
