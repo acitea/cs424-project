@@ -1,99 +1,161 @@
-ts         # Jotai state management
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.ts
-├── backend/                 # FastAPI backend
-│   ├── main.py              # Main FastAPI application
-│   ├── models.py            # GAN model implementations
-│   └── requirements.txt     # Python dependencies
-└── README.md                # This file
-```
+# Image Transformation Studio
 
-## Backend Setup
-
-1. Create a virtual environment:
-   ```bash
-   cd backend
-   python -m venv venv
-   
-   # On Windows
-   venv\Scripts\activate
-   
-   # On Unix or MacOS
-   source venv/bin/activate
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Run the backend:
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-The backend will be available at `http://localhost:8000`.
-
-## Frontend Setup
-
-1. Install dependencies:
-   ```bash
-   cd frontend
-   npm install axios
-   ```
-
-2. Run the frontend:
-   ```bash
-   npm run dev
-   ```
-
-The frontend will be available at `http://localhost:5173`.
+A web application for applying GAN-based image transformations using a modern React frontend and FastAPI backend.
 
 ## Features
 
-- Two image processing tasks (style transfer and photo enhancement)
-- Upload images via drag-and-drop
-- Real-time progress indication
-- Download processed images
-- Responsive UI
+- Style Transfer transformation
+- Pokemon-style image generation
+- Easy-to-use interface with drag-and-drop uploads
+- Real-time progress indicators
+- Responsive design for all device sizes
 
-## Backend API Endpoints
+## Project Structure
 
-- `GET /api/tasks` - Get list of available tasks
-- `POST /api/generate` - Generate an image from uploaded file and task ID
-- `GET /api/images/{filename}` - Get generated image file
+The project is organized into two main parts:
 
-## Technical Details
+### Frontend (React + Vite + TypeScript)
 
-### Backend
+```
+frontend/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── ImageDisplay.tsx
+│   │   ├── ImageGeneration.tsx
+│   │   ├── ImageUploader.tsx
+│   │   ├── LoadingIndicator.tsx
+│   │   └── theme-provider.tsx
+│   ├── store.ts
+│   ├── utils.ts
+│   ├── App.tsx
+│   └── main.tsx
+├── .env
+├── index.html
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
 
-The backend uses FastAPI to provide REST API endpoints. It includes:
+### Backend (FastAPI + Python)
 
-- **FastAPI Application**: Handles HTTP requests, file uploads, and serves generated images
-- **Mock GAN Models**: Simulates image processing with filters for demonstration
-- **CORS Support**: Configured for local development
-- **File Storage**: Manages uploaded and generated images
+```
+backend/
+├── generators/
+│   └── task2/
+│       └── PokemonGenerator.py
+├── weights/
+│   └── task2/
+│       └── PokemonCycleGanGAB.pth
+├── uploads/
+├── results/
+├── bg_removal.py
+├── models.py
+├── main.py
+├── utils.py
+├── download_cleaner.py
+├── run.sh
+├── requirements.txt
+└── Dockerfile
+```
+
+## Setup and Installation
+
+### Using Docker Compose (Recommended)
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/image-transformation-studio.git
+   cd image-transformation-studio
+   ```
+
+2. Start the application using Docker Compose:
+   ```
+   docker-compose up -d
+   ```
+
+3. Access the application at `http://localhost:3000`
+
+### Manual Setup
+
+#### Backend
+
+1. Navigate to the backend directory:
+   ```
+   cd backend
+   ```
+
+2. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
+4. Make the run script executable:
+   ```
+   chmod +x run.sh
+   ```
+
+5. Run the backend server using the script (this will download the U2NET model if needed):
+   ```
+   ./run.sh
+   ```
+
+   Alternatively, you can run the server directly:
+   ```
+   python download_cleaner.py  # Download the model first
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+#### Frontend
+
+1. Navigate to the frontend directory:
+   ```
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Start the development server:
+   ```
+   npm run dev
+   ```
+
+4. Access the frontend at `http://localhost:5173`
+
+## API Endpoints
+
+- `GET /` - API status
+- `GET /tasks` - List available transformation tasks
+- `POST /transform/{task_id}` - Transform an image using specified task
+- `GET /results/{filename}` - Get a transformed image result
+
+## Technologies Used
 
 ### Frontend
+- React 18
+- TypeScript
+- Vite
+- Jotai (State Management)
+- Tailwind CSS
+- ShadCN UI Components
+- React Dropzone
 
-The frontend is built with React, TypeScript, and modern UI components:
+### Backend
+- FastAPI
+- Python 3.10+
+- PyTorch
+- U2NET (Background Removal)
+- CycleGAN (Style Transfer)
 
-- **State Management**: Uses Jotai for app-wide state management
-- **Component Library**: Uses ShadCN UI components 
-- **File Handling**: Supports drag-and-drop with previews
-- **API Integration**: Communicates with the backend via axios
-- **Responsive Design**: Works on mobile and desktop devices
+## License
 
-## Extending the Application
-
-To integrate real Cyclic GAN models:
-
-1. Update the `models.py` file with actual PyTorch/TensorFlow model loading and inference
-2. Add model weights to a separate directory
-3. Implement pre-processing and post-processing functions for the images
-4. Update the endpoint to handle model-specific parameters
-
-## Screenshots
-
-(Add screenshots here when available)
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,7 +1,7 @@
 import { atom } from 'jotai';
 
-// Define interfaces for our state
-export interface ImageTask {
+// Define types
+export interface Task {
   id: string;
   name: string;
   description: string;
@@ -13,72 +13,57 @@ export interface TaskState {
   result: string | null;
   loading: boolean;
   progress: number;
+  error: string | null;
 }
 
-// Define initial task configurations
-export const tasksAtom = atom<ImageTask[]>([
-  { 
-    id: 'task1', 
-    name: 'Task 1',
-    description: 'Transform your images using our first CycleGAN model. This model specializes in converting between two specific domains.'
+// Define the initial task state
+const initialTaskState: TaskState = {
+  file: null,
+  preview: null,
+  result: null,
+  loading: false,
+  progress: 0,
+  error: null,
+};
+
+// API URL
+export const apiUrlAtom = atom<string>('http://localhost:8000');
+
+// Available tasks
+
+export const tasksAtom = atom<Task[]>([
+  {
+    id: 'task1',
+    name: 'Style Transfer',
+    description: 'Transform your photos with artistic style effects'
   },
-  { 
-    id: 'task2', 
-    name: 'Task 2',
-    description: 'Create cute pokemon from your favourite animals using our custom CycleGAN!'
-  },
+  {
+    id: 'task2',
+    name: 'Pokemon Generator',
+    description: 'Turn your image into a Pokemon-style character'
+  }
 ]);
 
-// State for active task ID
+
+// Active task ID
 export const activeTaskIdAtom = atom<string>('task1');
 
-// Task state storage - persists across tab switches
+// Task states - a map of task IDs to their respective states
 export const taskStatesAtom = atom<Record<string, TaskState>>({
-  task1: {
-    file: null,
-    preview: null,
-    result: null,
-    loading: false,
-    progress: 0
-  },
-  task2: {
-    file: null,
-    preview: null,
-    result: null,
-    loading: false,
-    progress: 0
-  }
+  task1: { ...initialTaskState },
+  task2: { ...initialTaskState },
 });
 
-// Derived atom for the current task
-export const currentTaskAtom = atom(
-  (get) => {
-    const taskId = get(activeTaskIdAtom);
-    const tasks = get(tasksAtom);
-    return tasks.find(task => task.id === taskId) || tasks[0];
-  }
-);
-
-// Derived atom for the current task state
-export const currentTaskStateAtom = atom(
-  (get) => {
-    const taskId = get(activeTaskIdAtom);
-    const taskStates = get(taskStatesAtom);
-    return taskStates[taskId];
-  }
-);
-
-// Setter atoms for updating specific task states
+// Derived atoms for updating specific parts of the task state
 export const updateTaskFileAtom = atom(
   null,
   (get, set, { taskId, file }: { taskId: string; file: File | null }) => {
-    const taskStates = get(taskStatesAtom);
     set(taskStatesAtom, {
-      ...taskStates,
+      ...get(taskStatesAtom),
       [taskId]: {
-        ...taskStates[taskId],
+        ...get(taskStatesAtom)[taskId],
         file,
-      }
+      },
     });
   }
 );
@@ -86,13 +71,12 @@ export const updateTaskFileAtom = atom(
 export const updateTaskPreviewAtom = atom(
   null,
   (get, set, { taskId, preview }: { taskId: string; preview: string | null }) => {
-    const taskStates = get(taskStatesAtom);
     set(taskStatesAtom, {
-      ...taskStates,
+      ...get(taskStatesAtom),
       [taskId]: {
-        ...taskStates[taskId],
+        ...get(taskStatesAtom)[taskId],
         preview,
-      }
+      },
     });
   }
 );
@@ -100,13 +84,12 @@ export const updateTaskPreviewAtom = atom(
 export const updateTaskResultAtom = atom(
   null,
   (get, set, { taskId, result }: { taskId: string; result: string | null }) => {
-    const taskStates = get(taskStatesAtom);
     set(taskStatesAtom, {
-      ...taskStates,
+      ...get(taskStatesAtom),
       [taskId]: {
-        ...taskStates[taskId],
+        ...get(taskStatesAtom)[taskId],
         result,
-      }
+      },
     });
   }
 );
@@ -114,13 +97,12 @@ export const updateTaskResultAtom = atom(
 export const updateTaskLoadingAtom = atom(
   null,
   (get, set, { taskId, loading }: { taskId: string; loading: boolean }) => {
-    const taskStates = get(taskStatesAtom);
     set(taskStatesAtom, {
-      ...taskStates,
+      ...get(taskStatesAtom),
       [taskId]: {
-        ...taskStates[taskId],
+        ...get(taskStatesAtom)[taskId],
         loading,
-      }
+      },
     });
   }
 );
@@ -128,13 +110,25 @@ export const updateTaskLoadingAtom = atom(
 export const updateTaskProgressAtom = atom(
   null,
   (get, set, { taskId, progress }: { taskId: string; progress: number }) => {
-    const taskStates = get(taskStatesAtom);
     set(taskStatesAtom, {
-      ...taskStates,
+      ...get(taskStatesAtom),
       [taskId]: {
-        ...taskStates[taskId],
+        ...get(taskStatesAtom)[taskId],
         progress,
-      }
+      },
+    });
+  }
+);
+
+export const updateTaskErrorAtom = atom(
+  null,
+  (get, set, { taskId, error }: { taskId: string; error: string | null }) => {
+    set(taskStatesAtom, {
+      ...get(taskStatesAtom),
+      [taskId]: {
+        ...get(taskStatesAtom)[taskId],
+        error,
+      },
     });
   }
 );

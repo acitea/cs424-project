@@ -1,214 +1,136 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from typing import Optional, List, Dict, Any
-import shutil
+from fastapi.responses import FileResponse
+from starlette.responses import JSONResponse
 import os
 import uuid
-import time
+import shutil
 import logging
-from pydantic import BaseModel
-
-# Import our modules
 from models import get_model
-import utils as app_utils
-from config import config
-from docs import setup_docs
-# Uncomment to use real GAN models when ready
-# from gan_integration import get_gan_model
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(os.path.join(config.logs_dir, "app.log"))
-    ]
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create necessary directories
-for directory in [config.upload_dir, config.results_dir, config.logs_dir]:
-    app_utils.ensure_directory_exists(directory)
+try:
+    import download_cleaner
+    download_cleaner.download_model()
+except Exception as e:
+    logging.error(f"Error downloading U2NET model: {str(e)}")
+    logging.warning("The application may not function correctly without the U2NET model")
+
+# Directory setup
+UPLOAD_DIR = "uploads"
+RESULTS_DIR = "results"
+
+# Create directories if they don't exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 app = FastAPI(
-    title=config.api_title,
-    description=config.api_description,
-    version=config.api_version
+    title="Image Transformation API",
+    description="API for image transformation tasks using GAN models",
+    version="1.0.0",
 )
 
-# Configure CORS
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.cors_origins,
+    allow_origins=["*"],  # Update this with your frontend URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve generated images
-app.mount("/static", StaticFiles(directory=config.results_dir), name="static")
-
-# Setup custom docs
-setup_docs(app)
-
-# Define Pydantic models for API
-class Task(BaseModel):
-    id: str
-    name: str
-    description: str
-
-class TaskList(BaseModel):
-    tasks: List[Task]
-
-class ImageResponse(BaseModel):
-    result_url: str
-    width: Optional[int] = None
-    height: Optional[int] = None
-
 @app.get("/")
-def read_root():
-    """Root endpoint that confirms the API is running"""
-    return {"message": "Image Generation API is running", "version": "1.0.0"}
+async def root():
+    return {"message": "Image Transformation API is running"}
 
-@app.post("/api/generate", response_model=ImageResponse)
-async def generate_image(
+@app.get("/tasks")
+async def get_tasks():
+    """Get a list of available transformation tasks"""
+    return {
+        "tasks": [
+            {
+                "id": "task1",
+                "name": "Style Transfer",
+                "description": "Apply a stylized filter to your image"
+            },
+            {
+                "id": "task2",
+                "name": "Pokemon Generator",
+                "description": "Transform your image into Pokemon style"
+            }
+        ]
+    }
+
+@app.post("/transform/{task_id}")
+async def transform_image(
+    task_id: str,
     file: UploadFile = File(...),
-    task_id: str = Form(...),
-    background_tasks: BackgroundTasks = None,
+    background_tasks: BackgroundTasks = None
 ):
     """
-    Generate an image using the specified task
+    Transform an uploaded image using the specified GAN model
     
     Args:
-        file: Input image file
-        task_id: ID of the task to perform
-        background_tasks: FastAPI background tasks
-        
+        task_id: The task identifier (task1, task2)
+        file: The uploaded image file
+    
     Returns:
-        URL of the generated image
+        JSON with the image URL
     """
-    logger.info(f"Processing request for task: {task_id}")
-    
-    # Validate file extension
-    if not app_utils.allowed_file(file.filename):
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid file type. Allowed types: {', '.join(app_utils.ALLOWED_EXTENSIONS)}"
-        )
-    
-    # Get the appropriate model for the task
-    model = get_model(task_id)
-    if not model:
-        raise HTTPException(status_code=400, detail=f"Invalid task ID: {task_id}")
-    
-    # Create unique filenames
-    file_id = str(uuid.uuid4())
-    input_filename = f"uploads/{file_id}.png"
-    output_filename = f"results/{file_id}.png"
-    
-    # Save the uploaded file
     try:
-        with open(input_filename, "wb") as buffer:
+        # Check if the task is valid
+        model = get_model(task_id)
+        if not model:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+        
+        # Generate unique filename
+        filename = f"{uuid.uuid4()}"
+        file_extension = os.path.splitext(file.filename)[1]
+        input_path = os.path.join(UPLOAD_DIR, f"{filename}{file_extension}")
+        output_path = os.path.join(RESULTS_DIR, f"{filename}_result{file_extension}")
+        
+        # Save the uploaded file
+        with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        logger.error(f"Error saving uploaded file: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save uploaded file")
-    
-    # Validate the image file
-    is_valid, error_message = app_utils.validate_image(input_filename)
-    if not is_valid:
-        # Clean up the invalid file
-        if os.path.exists(input_filename):
-            os.remove(input_filename)
-        raise HTTPException(status_code=400, detail=error_message)
-    
-    # Resize image if needed
-    resized_input = app_utils.resize_image_if_needed(input_filename)
-    
-    # Process the image with the appropriate model
-    try:
-        success = model.generate(resized_input, output_filename)
+        
+        # Process the image
+        logger.info(f"Processing image for task {task_id}")
+        success = model.generate(input_path, output_path)
         
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to process image")
+            raise HTTPException(status_code=500, detail="Image transformation failed")
         
-        # Get the dimensions of the output image
-        width, height = app_utils.get_image_dimensions(output_filename)
-        
-        # Return the result image
-        return ImageResponse(
-            result_url=f"/api/images/{file_id}.png",
-            width=width,
-            height=height
-        )
-    except Exception as e:
-        logger.error(f"Error processing image: {e}")
-        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
-    finally:
-        # Clean up temporary files in background
+        # Clean up the input file in the background
         if background_tasks:
-            background_tasks.add_task(
-                lambda: os.remove(input_filename) if os.path.exists(input_filename) else None
-            )
-            # Only remove the resized file if it's different from the input
-            if resized_input != input_filename and background_tasks:
-                background_tasks.add_task(
-                    lambda: os.remove(resized_input) if os.path.exists(resized_input) else None
-                )
+            background_tasks.add_task(os.remove, input_path)
+        
+        # Return the URL to the transformed image
+        result_url = f"/results/{os.path.basename(output_path)}"
+        return {"status": "success", "result_url": result_url}
+        
+    except Exception as e:
+        logger.error(f"Error processing transformation: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/images/{filename}")
-async def get_image(filename: str):
+@app.get("/results/{filename}")
+async def get_result(filename: str):
     """
-    Get a generated image by filename
+    Get a transformed image result
     
     Args:
-        filename: Name of the image file
-        
+        filename: The result filename
+    
     Returns:
         The image file
     """
-    file_path = f"results/{filename}"
+    file_path = os.path.join(RESULTS_DIR, filename)
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Image not found")
+        raise HTTPException(status_code=404, detail="Result not found")
     
-    return FileResponse(
-        file_path, 
-        media_type="image/png",
-        filename=f"generated-{filename}"
-    )
-
-@app.get("/api/tasks", response_model=TaskList)
-def get_tasks():
-    """
-    Get list of available tasks
-    
-    Returns:
-        List of available tasks
-    """
-    # Convert from config to API response
-    tasks = [
-        Task(
-            id=task.id,
-            name=task.name,
-            description=task.description
-        )
-        for task in config.tasks
-    ]
-    
-    return {"tasks": tasks}
-
-@app.get("/api/health")
-def health_check():
-    """
-    Health check endpoint
-    
-    Returns:
-        Health status
-    """
-    return {"status": "ok"}
+    return FileResponse(file_path)
 
 if __name__ == "__main__":
     import uvicorn

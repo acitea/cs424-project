@@ -11,21 +11,16 @@ services:
       - ./backend:/app
       - backend_data:/app/data
     environment:
-      - ENVIRONMENT=development
-      - LOG_LEVEL=INFO
+      - DEBUG=1
     restart: unless-stopped
+    command: ["./run.sh"]
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://localhost:8000
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
