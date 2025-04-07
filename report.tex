@@ -101,12 +101,7 @@ All optimisers used Adam with the following hyperparameters and loss weights:
     \end{itemize}
 \end{multicols}
 
-
-
 \section{Architecture}
-\subsection{Discriminator}
-\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
-
 
 \subsection{Generator}
 \paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
@@ -132,8 +127,36 @@ Some of our key design choices:
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{task1/discriminator-architecture.pdf}
+    \includegraphics[width=\linewidth]{task1/generator-architecture-h.png}
+    \caption{Generator Architecture}
 \end{figure}
+% \begin{figure}[h]
+%     \centering
+%     \includegraphics[height=150pt]{task1/self-attn.jpg}
+%     \caption{Self-Attention Block}
+% \end{figure}
+
+\begin{minipage}[t]{.5\textwidth}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[scale=0.41]{task1/self-attn.jpg}}
+    \\Self Attention Block
+\end{minipage}
+\begin{minipage}[t]{.46\textwidth}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[scale=0.26]{task1/cbam.jpg}}
+\end{minipage}
+
+
+\newpage
+\subsection{Discriminator}
+\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task1/discriminator-architecture.pdf}
+    \caption{Discriminator Architecture}
+\end{figure}
+
 
 \section{Data Preparation}
 \subsection{Augmentations}
@@ -169,7 +192,7 @@ We used a combination of loss functions beyond the standard adversarial loss to 
 \end{equation}
 
 \subsubsection{Gradient Penalty – $L_{gp}$}
-We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} which improves stability of training, avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator.
+We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
 
 \subsubsection{Relativistic – $L_{GAN}$}
 We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equation for our relativistic loss for our "real" side is as follows, and the opposite will be applied for the "fake" side i.e. $D_{real} <=> D_{fake}, True <=> False$:
@@ -189,6 +212,13 @@ As we would like the fake images to be able revertible to its original image i.e
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
 Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{task1/loss_curves.jpg}
+    \caption{Overall loss curves}
+\end{figure}
 
 \chapter{Task 2}
 \section{Introduction}
