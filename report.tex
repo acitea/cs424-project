@@ -12,6 +12,7 @@
 \usepackage{multirow}
 \usepackage{adjustbox}
 \usepackage{multicol}
+\usepackage[outermargin=-4cm,]{fullwidth}
 
 \geometry{
     a4paper,
@@ -84,15 +85,19 @@ With our enhancements, we achieved the following results:
 \end{table}
 
 \subsection{Configuration \& Hyperparameters}
-All optimisers used Adam with the following hyperparameters and loss weights:
+All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
 
-\begin{multicols}{2}
+\begin{multicols}{3}
     \begin{itemize}
         \item Random seed: 42
-        \item Torch seed: 16109772023028774379
-        \item n epochs: 100
-        \item learning rate: 2e-4
-        \item betas: (0.5, 0.999)
+        \item Torch seed: 1722426635407800
+        \item Epochs: 100
+        \item Batch size: 3
+        \item Learning rate: 2e-4
+        \item Betas: (0.5, 0.999)
+        \item $Scheduler_{t-0}$: 10
+        \item $Scheduler_{t-mult}$: 2
+        \item $Scheduler_{min-lr}$: 1e-5
         \item $\lambda_{cyc}$: 10.0
         \item $\lambda_{id}$: 5.0
         \item $\lambda_{gan}$: 1.0
@@ -104,9 +109,8 @@ All optimisers used Adam with the following hyperparameters and loss weights:
 \section{Architecture}
 
 \subsection{Generator}
-\paragraph{} Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence.
+Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below:
 
-Some of our key design choices:
 \begin{itemize}
     \item \textbf{Instance Normalization:} Used throughout the network instead of batch normalization, as it has been shown to produce better results for style transfer and image-to-image translation by normalizing each instance independently.
 
@@ -129,27 +133,22 @@ Some of our key design choices:
     \centering
     \includegraphics[width=\linewidth]{task1/generator-architecture-h.png}
     \caption{Generator Architecture}
+    \begin{fullwidth}[innermargin=-2cm,width=\linewidth+4cm,nobreak]
+        \begin{minipage}[t]{.5\textwidth}
+            \centering
+            \adjustbox{valign=t}{\includegraphics[scale=0.5]{task1/self-attn.jpg}}
+            \\Self Attention Block
+        \end{minipage}
+        \begin{minipage}[t]{.5\textwidth}
+            \centering
+            \adjustbox{valign=t}{\includegraphics[scale=0.31]{task1/cbam.jpg}}
+        \end{minipage}
+    \end{fullwidth}
 \end{figure}
-% \begin{figure}[h]
-%     \centering
-%     \includegraphics[height=150pt]{task1/self-attn.jpg}
-%     \caption{Self-Attention Block}
-% \end{figure}
-
-\begin{minipage}[t]{.5\textwidth}
-    \centering
-    \adjustbox{valign=t}{\includegraphics[scale=0.41]{task1/self-attn.jpg}}
-    \\Self Attention Block
-\end{minipage}
-\begin{minipage}[t]{.46\textwidth}
-    \centering
-    \adjustbox{valign=t}{\includegraphics[scale=0.26]{task1/cbam.jpg}}
-\end{minipage}
-
 
 \newpage
 \subsection{Discriminator}
-\paragraph{} Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
+Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
 
 \begin{figure}[h]
     \centering
@@ -160,28 +159,33 @@ Some of our key design choices:
 
 \section{Data Preparation}
 \subsection{Augmentations}
-\paragraph{} We started with resizing images to 128x128, paired with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations. 
+We started with resizing images to 128x128, with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations. \\
 
-\paragraph{} After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. 
+\noindent After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. \\
 
-\paragraph{} Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 4. 
+\noindent Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 3. Some sample results are shown in the below Figures.
 
-\vspace{20pt}
-\begin{minipage}[t]{.47\textwidth}
+\newpage
+\begin{figure}[h]
     \centering
-    \adjustbox{valign=t}{\includegraphics[scale=0.22]{task1/top1.jpg}}
-    256x256 images Avg GMS: 3.85666
-\end{minipage}
-\begin{minipage}[t]{.47\textwidth}
-    \centering
-    \adjustbox{valign=t}{\includegraphics[scale=0.22]{task1/top2.jpg}}
-    128x128 images Avg GMS: 4.47829
-\end{minipage}
+    \includegraphics[width=0.8\linewidth]{task1/originals.jpg}
+    \vspace{-10pt}
+    \caption{Original images. Top row: Raw, Bottom row: Cartoon}
+    \vspace{12pt}
+    \includegraphics[width=0.8\linewidth]{task1/top2.jpg}
+    \vspace{-10pt}
+    \caption{128x128 images Avg GMS: 4.47829}
+    \vspace{12pt}
+    \includegraphics[width=0.8\linewidth]{task1/top1.jpg}
+    \vspace{-10pt}
+    \caption{256x256 images Avg GMS: 3.85666}
+\end{figure}
 
+\newpage
 \subsection{Training/Validation}
-\paragraph{} We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results.
+We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results. \\
 
-\paragraph{} We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
+\noindent We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}
 
