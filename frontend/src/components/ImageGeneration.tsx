@@ -9,6 +9,7 @@ import ImageDisplay from './ImageDisplay';
 import LoadingIndicator from './LoadingIndicator';
 import ModelSelector from './ModelSelector';
 import ReverseButton from './ReverseButton';
+import ModelUploader from './ModelUploader';
 import { 
   activeTaskIdAtom, 
   tasksAtom, 
@@ -53,6 +54,16 @@ const ImageGenerationSection: React.FC = () => {
 
     }
   }
+  const handleModelUploadSuccess = (taskId: string, model: Model) => {
+    // After successful upload, select the uploaded model
+    updateTaskSelectedModel({ taskId, model });
+    updateTaskReverse({ taskId, reverse: model.reverse });
+    
+    // Refresh the model list by forcing a reload
+    // This will happen naturally as the selector component will refetch models
+    
+    toast.success('Model uploaded and selected successfully');
+  };
   // Fetch tasks from the backend
   useEffect(() => {
     const fetchTasks = async () => {
@@ -251,6 +262,13 @@ const ImageGenerationSection: React.FC = () => {
           {/* Model Selector positioned at top right */}
           {tasks.map(task => (
             <div key={`model-selector-${task.id}`} className={task.id === activeTaskId ? 'block' : 'hidden'}>
+                <ModelUploader
+                taskId={task.id}
+                reverse={taskStates[task.id].reverse}
+                onUploadSuccess={(model) => handleModelUploadSuccess(task.id, model)}
+                disabled={taskStates[task.id].loading}
+                apiUrl={apiUrl}
+              />
               <ModelSelector
                 taskId={task.id}
                 selectedModelId={taskStates[task.id].selectedModel?.id || ''}

@@ -175,6 +175,87 @@ async def transform_image(
     except Exception as e:
         logger.error(f"Error processing transformation: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.post("/upload-model/{task_id}")
+async def upload_model(
+    task_id: str,
+    model_file: UploadFile = File(...),
+    reverse: bool = Form(False),
+    model_name: str = Form(None)
+):
+    """
+    Upload a new model file (.pth) for a specific task
+    
+    Args:
+        task_id: The task identifier (task1, task2)
+        model_file: The model file to upload (.pth)
+        reverse: Whether this is a reverse transformation model
+        model_name: Custom name for the model (optional)
+        
+    Returns:
+        JSON with upload status and model info
+    """
+    try:
+        # Validate file extension
+        if not model_file.filename.endswith('.pth'):
+            raise HTTPException(status_code=400, detail="Only .pth model files are supported")
+            
+        # Create task directory if it doesn't exist
+        base_path = os.path.join("weights", task_id)
+        os.makedirs(base_path, exist_ok=True)
+        
+        # For task2, use forward/reverse subdirectories
+        if task_id == "task2":
+            direction = "reverse" if reverse else "forward"
+            save_dir = os.path.join(base_path, direction)
+        else:
+            # For other tasks, just use the task directory
+            save_dir = base_path
+            
+        # Create the directory if it doesn't exist
+        os.makedirs(save_dir, exist_ok=True)
+        
+        # Generate a filename if not provided
+        if not model_name:
+            # Use original filename or generate a unique name
+            filename = model_file.filename
+        else:
+            # Ensure the filename has .pth extension
+            filename = f"{model_name}.pth" if not model_name.endswith('.pth') else model_name
+        
+        # Full path to save the model
+        model_path = os.path.join(save_dir, filename)
+        
+        # Save the uploaded file
+        with open(model_path, "wb") as buffer:
+            shutil.copyfileobj(model_file.file, buffer)
+        
+        # Construct the model ID as it would appear in available-models
+        if task_id == "task2":
+            model_id = os.path.join("reverse" if reverse else "forward", filename)
+        else:
+            model_id = filename
+            
+        logger.info(f"Model uploaded successfully: {model_path}")
+        
+        return {
+            "status": "success", 
+            "message": "Model uploaded successfully",
+            "model": {
+                "id": model_id,
+                "name": filename,
+                "description": f"Custom uploaded model ({'reverse' if reverse else 'forward'})",
+                "reverse": reverse
+            }
+        }
+        
+    except HTTPException as e:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading model: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error uploading model: {str(e)}")
 
 
 @app.get("/results/{filename}")
