@@ -111,7 +111,7 @@ All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The fo
 \section{Architecture}
 
 \subsection{Generator}\label{task1:generator}
-Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below:
+Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, Self-Attention mechanisms, Spacial Attention Blocks and Channel Attention Blocks for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below:
 
 \begin{itemize}
     \item \textbf{Instance Normalization:} Used throughout the network instead of batch normalization, as it has been shown to produce better results for style transfer and image-to-image translation by normalizing each instance independently.
@@ -121,7 +121,8 @@ Our generator incorporates several modern attention mechanisms and architectural
     \item \textbf{Mixed + Improved Residual Blocks:} The strategic placement of different residual block types allows the network to benefit from complementary approaches to feature transformation. They also exhibit the following characteristics and sub-blocks:
     \begin{itemize}
         \item \textbf{Channel Attention:} Models interdependencies between channels using both max and average pooling operations.
-        \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.v
+        \item \textbf{Spatial Attention:} Focuses on important spatial regions by creating attention maps from channel-wise statistics.
+        \item \textbf{Skip Connection:} Allows gradients to flow more easily through the network, improving convergence and enabling the model to learn more complex mappings.
         \item All blocks benefit from SE attention for channel recalibration
     \end{itemize}
 
@@ -150,7 +151,7 @@ Our generator incorporates several modern attention mechanisms and architectural
 
 % \newpage
 \subsection{Discriminator}\label{task1:discriminator}
-Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification. \\
+Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512 and downsizing the image size by half 4 times to 16x16. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification. \\
 
 \noindent Given that we have used a 256x256 image, the feature map will have size of $[B, 512, 16, 16]$, the patchGAN will have size of $[B, 1, 16, 16]$. A larger patch GAN and feature map allows us to capture more details of specific features in certain areas which allows the discriminator to provide more useful information to the generator.
 
@@ -456,7 +457,7 @@ We used a combination of loss functions beyond the standard adversarial loss to 
 \end{equation}
 
 \subsubsection{Gradient Penalty – $L_{gp}$}
-We also use a gradient penaltysss, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
+We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
 \begin{equation*}
     \text{Gradient Penalty Loss} = 0.7 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{patch}} (\hat{x}) \|_2 - 1 \right)^2 \right] + 0.3 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{global}} (\hat{x}) \|_2 - 1 \right)^2 \right]
 \end{equation*}
@@ -482,7 +483,7 @@ As we would like the fake images to be able revertible to its original image i.e
 \subsubsection{Identity – $L_{id}$}
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
-To encourage perceptual similarity between generated Pokémon and their corresponding animal inputs, we incorporate a Feature Loss ($L_{feat}$) based on intermediate activations from our discriminator. While perceptual loss is often computed using pre-trained networks like VGG, these models are trained on datasets such as ImageNet, which do not share the stylistic or semantic characteristics of our target domain. Instead, we extract features from our task-specific discriminator, which learns domain-relevant representations during adversarial training. We use the L1 norm to compute the distance between features of the generated and target images to focus on accurate reconstruction, as it is more robust to outliers and tends to preserve texture and structure better than L2, which can overly penalize large deviations and lead to smoother, less detailed outputs.
+Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
 \section{Methodology}
 Similar to task 1, we also made use of \textbf{Image Pooling} (as seen in \ref{task1:image-pooling}). However, we did not employ any additional special training techniques due to the lack of time to experiment. Instead, we opted for the standard training procedure with the hyperparameters as mentioned in \ref{task2:configuration}.
