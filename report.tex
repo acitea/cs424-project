@@ -71,7 +71,7 @@ This report provides an overview of Cycle-Consistent Adversarial Networks (Cycle
 \chapter{Task 1}
 
 \section{Introduction}
-We attempt to create a CyleGAN using novel and modern techniques to improve the performance of the model to convert cartoon faces to realistic faces, and vice-versa. We will be using improved blocks, various attention mechanisms and normalisation techniques in our generators, as well as additional loss functions to better guide the models to learn the mapping between the two domains. We opted not to use any augmentations to our images, and we use an image size of 256x256 as our input/output size. \\\\
+We attempt to create a CyleGAN using novel and modern techniques to improve the performance of the model to convert cartoon faces to realistic faces, and vice-versa. We will be using improved blocks, various attention mechanisms and normalisation techniques in our generators, as well as additional loss functions to better guide the models to learn the mapping between the two domains. We opted not to use any augmentations to our images, and we use an image size of 256x256 as our input/output image size. \\\\
 With our enhancements, we achieved the following results:
 
 \begin{table}[h]
@@ -86,7 +86,7 @@ With our enhancements, we achieved the following results:
     \end{tabular}
 \end{table}
 
-\noindent Any supplementary details can be found in the Appendix \ref{task1:appendix}.
+\noindent Further supplementary details can be found in the Appendix \ref{task1:appendix}.
 
 \subsection{Configuration \& Hyperparameters}
 All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
@@ -157,7 +157,7 @@ Our discriminator uses a basic sequential architecture with convolutional layers
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.7\textwidth]{task1/discriminator-architecture.pdf}
-    \caption{Discriminator Architecture}
+    \caption{Task 1: Discriminator Architecture}
 \end{figure}
 
 
@@ -198,9 +198,19 @@ Our best results came from a multi-staged supervised training approach. The idea
 Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:cap}} where we iteratively save checkpoints of our models, measure their metrics, and we keep the best performing weights. We then use these weights as a starting point for the next stage of training.
 \paragraph*{\noindent Our novelty}stems from how we decrease the batch size, number of epochs, and evaluation threshold proportionally in each iterative stage, while using newly randomised seeds and maintaining learning rate so that our ratio of batch size to learning rate decreases\footnote{He, F., Liu, T., \& Tao, D. (2019). Control Batch Size and Learning Rate to Generalize Well: Theoretical and Empirical Evidence. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d' Alché-Buc, E. Fox, \& R. Garnett (Eds.), Advances in Neural Information Processing Systems (Vol. 32). Retrieved from \\ \href{https://proceedings.neurips.cc/paper_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}{https://proceedings.neurips.cc/paper\_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}}. This allows us to gradually refine the model's performance and achieve better results as each iteration encourages the model to learn finer details. Our intention with newly randomised seeds was to allow the optimisers to start on a different location in the loss optimisation graph, which may force it to hit a new local minima. 
 
-\begin{align*}
-    Batch Sizes = [3, 2, 1] \quad& Epochs = [100, 50, 30] \quad Eval Threshold = [10, 5, 3] \quad &TorchSeed = [1722426635407800, smth smth]
-\end{align*}
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|l|l|l|l|}
+    \hline
+    \textbf{Stage} & \textbf{Batch Sizes} & \textbf{Epochs} & \textbf{Eval Threshold} & \textbf{Torch Seed} \\
+    \hline
+    Stage 1 & 3 & 100 & 10 & 1722426635407800 \\
+    Stage 2 & 2 & 50  & 10  & -- \\
+    Stage 3 & 1 & 30  & 3  & -- \\
+    \hline
+    \end{tabular}
+    \caption{Configuration of hyperparameters for each stage}
+\end{table}
 
 \begin{algorithm}[h]
     \caption{Basic Training Loop Single Stage}\label{alg:cap}
@@ -238,8 +248,8 @@ Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:c
 \end{algorithm}
 
 \newpage
-\subsection{Image Pooling}
-An "Image Pool" was also used in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
+\subsection{Image Pooling}\label{task1:image-pooling}
+An "Image Pool" was also used in training with a buffer of 50 images. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}\label{task1:losses}
 
@@ -281,37 +291,95 @@ In summary, our work extends the typical CycleGAN framework with significant enh
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{task1/loss_curves.jpg}
-    \caption{Overall loss curves}
+    \includegraphics[width=\textwidth]{task1/stage1_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curve for Stage 1 training}
+    \vspace{12pt}
+    \includegraphics[width=\linewidth]{task1/stage2_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curve for Stage 2 training}
+    \vspace{12pt}
 \end{figure}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \textbf{Stage / Direction} & \textbf{FID} $\downarrow$ & \textbf{IS} $\uparrow$ & \textbf{GMS} $\downarrow$ & \textbf{Avg GMS} $\downarrow$ \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 1}} \\
+    \hline
+    Raw to Cartoon     & 46.70193     & 2.41466 ± 0.24392   & 4.39783    & \multirow{2}{*}{3.85666} \\
+    Cartoon to Raw     & 39.83461         & 3.62382 ± 0.23992        & 3.31548        &            \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 2}} \\
+    \hline
+    Raw to Cartoon     & 31.6551     & 2.2699 ± 0.20   & 3.7344    & \multirow{2}{*}{3.42423} \\
+    Cartoon to Raw     & 35.1988     & 3.6300 ± 0.22   & 3.1139    &            \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 3}} \\
+    \hline
+    Raw to Cartoon     & TBC     & TBC ± 0.18   & TBC    & \multirow{2}{*}{TBC} \\
+    Cartoon to Raw     & TBC     & TBC ± 0.21   & TBC    &            \\
+    \hline
+    \end{tabular}
+    \caption{Evaluation metrics across stages, best results taken from each stage}
+    \label{tab:staged-eval}
+\end{table}
+
+
 
 \chapter{Task 2}
 \section{Introduction}
 
 
 
-\subsection{Configuration}
+\subsection{Configuration}\label{task2:configuration}
+
+All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
+
+\begin{multicols}{3}
+    \begin{itemize}
+        \item Random seed: 42
+        \item Epochs: 501
+        \item Batch size: 32
+        \item Learning rate: 3e-4
+        \item Betas: (0.5, 0.999)
+        \item $Scheduler_{t-0}$: 10
+        \item $Scheduler_{t-mult}$: 2
+        \item $Scheduler_{min-lr}$: 1e-5
+        \item $\lambda_{cyc}$: 6.0
+        \item $\lambda_{id}$: 3.0
+        \item $\lambda_{gan}$: 1.0
+        \item $\lambda_{gp}$: 10.0
+        \item $\lambda_{fm}$: 8.0
+        \item $\lambda_{perceptual}$: 2.0
+    \end{itemize}
+\end{multicols}
 
 
 
 \section{Architecture}
-\subsection{Generator}
-We used a similar architecture as the one used in Task 1 (\ref{task1:generator}), with the following modification specific to catering for vast difference in domains.
+\subsection{Generator}\label{task2:generator}
+We used a similar architecture as the one used in Task 1 (\ref{task1:generator}) for our best results. The following parameters were also used for our generator:
 
-\textbf{Vector Quantization Block} is used to convert the input image into a discrete representation, which is then passed through a series of residual blocks. The output of the residual blocks is then passed through a decoder to reconstruct the image. The vector quantization block is used to learn a set of discrete codes that can be used to represent the input image, allowing for more efficient encoding and decoding. 
+\begin{multicols}{3}
+    \begin{itemize}
+        \item Residual Blocks: 6
+        \item Use Attention: True
+        \item Features Dimension: 64
+    \end{itemize}
+\end{multicols}
+
+\paragraph{Failure From VQGAN Implementation:} 
+
+\textbf{Vector Quantization Block}\ref{fig:vq-concept} is used to convert the input image into a discrete representation, which is then passed through a series of residual blocks. The output of the residual blocks is then passed through a decoder to reconstruct the image. The vector quantization block is used to learn a set of discrete codes that can be used to represent the input image, allowing for more efficient encoding and decoding. 
 
 which will learn additional features, as animal and pokemon do not have a direct translation.
 
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{task2/vq-block.jpg}
-    \caption{Vector Quantization Block}
-\end{figure}
 
-
-
-\subsection{Discriminator}
+\subsection{Discriminator}\label{task2:discriminator}
 We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$.
 \noindent The reasons are two-fold: 
 
@@ -319,6 +387,13 @@ We used the same general architecture as the one used in Task 1 (\ref{task1:disc
     \item The structure of an animal and pokemon being very different, so we will not want to make the discriminator too powerful. 
     \item A $[B, 256, 6, 6]$ feature map will not provide enough useful information to the generator either, thus a $[B, 256, 12, 12]$ feature map can better help the generator to identify the Pokémon sprite style.
 \end{itemize}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task2/discriminatorArchitecture.jpg}
+    \caption{Task 2: Discriminator Architecture}
+\end{figure}
 
 
 
@@ -332,12 +407,20 @@ The animal dataset \footnote{Animal Image Dataset (90 Different Animals) – Zoo
 
 
 \subsubsection{Pokémon Sprite Dataset}
-We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be found in the Appendix \ref{task2:poke-official-fail} \\
+We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be seen in Figure \ref{fig:poke-fail1} using this dataset\footnote{All Pokemon Official Artworks – A Comprehensive Dataset of All 1010 Official Pokémon Artworks \href{https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images}{https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images}}
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task2/poke-fail1.jpg}
+    \vspace{-10pt}
+    \caption{Unacceptable style transfer with Pokémon Official Art}\label{fig:poke-fail1}
+\end{figure}
 
-\noindent The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+\noindent Notice that the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does not know exactly in what colour to use, and it does not make any informed or uninformed strong decision on how to colour. Thus, it ended up looking like a "mash-up" of the two domains, using the exact same colouring pattern. 
 
-\subsection{Pre-Processing}
+\noindent Thus, we finalised on using the Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} that consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+
+\subsection{Pre-Processing}\label{task2:preprocess}
 Due to the domains being vastly different, and the images are of different formats, we had to pre-process the images before feeding them into the model so that it will learn what it needs to learn. 
 \subsubsection{Background Removal}
 The Pokémon sprites from the dataset are placed on a white background, whereas the animal images are not. Thus, we need to remove the background of the animal images so that the model can focus on the animals themselves rather than including how to convert the background to white. \\
@@ -347,7 +430,7 @@ The Pokémon sprites from the dataset are placed on a white background, whereas 
 \subsubsection{No Tightly Paired Images}
 We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ensure that each Pokémon is not used too many times, as the different Pokémons are not equally represented in quantity. Since we have 1025 unique Pokémon, with different quantity of front-facing Pokémons, and 5400 different animal images, we try to ensure that each type of Pokémon sprite is at most represented 6 times. Finally, we have a total of 5400 animal-Pokémon paired images. 
 
-\paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
+\paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score as compared to the non-tightly paired dataset. Furthermore, we also conducted an anonymised field test through telegram polling with students across various schools-NUS, SMU, NTU-where some specifically are involved in Pokémon clubs, and across various undergraduate years. As of writing, we have 131 responses, with $1.5x$ more people prefer the results from the randomly-paired dataset compared to the tightly paired dataset. The methodology of the poll can be found in Appendix \ref{fig:survey}. Thus, it was sufficiently convincing for us to use the randomly paired dataset method.
 
 \begin{figure}[h]
     \centering
@@ -400,26 +483,74 @@ Similarly, we also use L1 Loss for our Identity loss since images in the same do
 \subsubsection{Feature – $L_{feat}$}
 Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
+\section{Methodology}
+Similar to task 1, we also made use of \textbf{Image Pooling} (as seen in \ref{task1:image-pooling}). However, we did not employ any additional special training techniques due to the lack of time to experiment. Instead, we opted for the standard training procedure with the hyperparameters as mentioned in \ref{task2:configuration}.
+% \subsection{Image Pooling}
+% An "Image Pool" was also used in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
+
+\section{Metrics}\label{task2:metrics}
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluation Metrics for Animal $\rightarrow$ Pokémon Style Transfer}
+    \begin{tabular}{lcccccc}
+        \hline
+        \textbf{Model} & 
+        \textbf{FID} $\downarrow$ & 
+        \textbf{IS} $\uparrow$ & 
+        \textbf{GMS} $\downarrow$ & 
+        \textbf{SSIM} $\uparrow$ & 
+        \textbf{Perceptual} $\downarrow$ & 
+        \textbf{Diversity} $\uparrow$ \\
+        \hline
+        Animal $\rightarrow$ Pokémon    & 96.37582 & 2.50949 ± 0.24199 & 6.19713 & 0.7262 & 3.0451 & 0.1451 \\
+        Pokémon $\rightarrow$ Animal       & 205.14336 & 3.26938 ± 0.30883 & 7.92128 & 0.5977 & 2.7445 & 0.2408 \\
+        \hline
+    \end{tabular}
+    \label{tab:metrics}
+\end{table}
 
 \section{Conclusion}
-TIME TO CHATGPT SMTHING
+In summary, our work inherits the learnings from Task 1 by introducing modifications tailored to the more challenging domain translation between animal images and Pokémon sprites. Key enhancements include the incorporation of a Vector Quantization Block for efficient encoding (see \ref{task2:generator}) and adjustments to the discriminator architecture to accommodate smaller image resolutions (see \ref{task2:discriminator}). Our data preparation strategy—featuring background removal and randomized pairing (see \ref{task2:preprocess})—ensured the model could efficiently learn the differences between the two domains. Finally, by integrating an additional Perceptual Loss into our loss functions (see \ref{task2:generator:loss:perceptual}), we further improved the perceptual fidelity of the generated images while maintaining training stability as seen from our metrics, utilising both subjective and objective analysis (see \ref{task2:metrics}). These innovations together present a robust solution for unsupervised style transfer between highly disparate visual domains.
 
 
 \section{Appendix}
 
-\subsubsection{Pokémon Official Art}\label{task2:poke-official-fail}
-Other dataset tried https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images
-This data consisted of 1010 official pokemon art. However, after training, the results seems to be really bad.
+\subsection{Randomly Paired vs Supervised Paired Dataset Preference}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task2/subjectivePolling.png}
+    \vspace{-10pt}
+    \caption{Context given to polling participants}
+    \vspace{12pt}
+    \includegraphics[width=0.7\textwidth]{task2/surveyResults.png}
+    \vspace{-10pt}
+    \caption{Poll Results}
+    \vspace{12pt}
+    \label{fig:survey}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{task2/vq-block.jpg}
+    \caption{Vector Quantization Block}
+    \label{fig:vq-concept}
+\end{figure}
 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{task2/poke-fail1.jpg}
+    \includegraphics[width=0.7\textwidth]{task2/failedvq1.jpg}
     \vspace{-10pt}
-    \caption{Random sample 1}\label{fig:poke-fail1}
+    \caption{Complete failure of VQGAN for Animals $\rightarrow$ Pokémon $\rightarrow$ Reconstructed Animals}
+    \vspace{12pt}
+    \includegraphics[width=0.7\textwidth]{task2/failedvq2.jpg}
+    \vspace{-10pt}
+    \caption{Complete failure of VQGAN for Pokémon $\rightarrow$ Animals $\rightarrow$ Reconstructed Pokémon}
+    \vspace{12pt}
+    \label{fig:failed-vq}
 \end{figure}
-
-Notice that in \ref{fig:poke-fail1} the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does now know exactly in what colour to use. We extensively researched on the reasons why and got cooked.
 
 
 \bibliographystyle{plain}
