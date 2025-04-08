@@ -261,7 +261,7 @@ const ImageGenerationSection: React.FC = () => {
           
           {/* Model Selector positioned at top right */}
           {tasks.map(task => (
-            <div key={`model-selector-${task.id}`} className={task.id === activeTaskId ? 'block' : 'hidden'}>
+            <div key={`model-selector-${task.id}`} className={`${task.id === activeTaskId ? 'block' : 'hidden'} gap-4 flex flex-col`}>
                 <ModelUploader
                 taskId={task.id}
                 reverse={taskStates[task.id].reverse}
