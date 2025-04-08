@@ -455,7 +455,7 @@ We used a combination of loss functions beyond the standard adversarial loss to 
 \end{equation}
 
 \subsubsection{Gradient Penalty – $L_{gp}$}
-We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
+We also use a gradient penaltysss, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
 \begin{equation*}
     \text{Gradient Penalty Loss} = 0.7 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{patch}} (\hat{x}) \|_2 - 1 \right)^2 \right] + 0.3 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{global}} (\hat{x}) \|_2 - 1 \right)^2 \right]
 \end{equation*}
@@ -481,7 +481,7 @@ As we would like the fake images to be able revertible to its original image i.e
 \subsubsection{Identity – $L_{id}$}
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
-Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
+To encourage perceptual similarity between generated Pokémon and their corresponding animal inputs, we incorporate a Feature Loss ($L_{feat}$) based on intermediate activations from our discriminator. While perceptual loss is often computed using pre-trained networks like VGG, these models are trained on datasets such as ImageNet, which do not share the stylistic or semantic characteristics of our target domain. Instead, we extract features from our task-specific discriminator, which learns domain-relevant representations during adversarial training. We use the L1 norm to compute the distance between features of the generated and target images to focus on accurate reconstruction, as it is more robust to outliers and tends to preserve texture and structure better than L2, which can overly penalize large deviations and lead to smoother, less detailed outputs.
 
 \section{Methodology}
 Similar to task 1, we also made use of \textbf{Image Pooling} (as seen in \ref{task1:image-pooling}). However, we did not employ any additional special training techniques due to the lack of time to experiment. Instead, we opted for the standard training procedure with the hyperparameters as mentioned in \ref{task2:configuration}.
