@@ -284,7 +284,7 @@ As we would like the fake images to be able revertible to its original image i.e
 \subsubsection{Identity – $L_{id}$}
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
-Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
+To encourage perceptual similarity between generated Pokémon and their corresponding animal inputs, we incorporate a Feature Loss ($L_{feat}$) based on intermediate activations from our discriminator. While perceptual loss is often computed using pre-trained networks like VGG, these models are trained on datasets such as ImageNet, which do not share the stylistic or semantic characteristics of our target domain. Instead, we extract features from our task-specific discriminator, which learns domain-relevant representations during adversarial training. We use the L1 norm to compute the distance between features of the generated and target images to focus on accurate reconstruction, as it is more robust to outliers and tends to preserve texture and structure better than L2, which can overly penalize large deviations and lead to smoother, less detailed outputs.
 
 \section{Conclusion}
 In summary, our work extends the typical CycleGAN framework with significant enhancements to both architecture and training methodology. By integrating advanced attention mechanisms and refined normalization techniques (see \ref{task1:generator}), and adopting a multi-staged training approach with strategically adjusted hyperparameters (see \ref{task1:staged-training}), we achieved significantly improved image quality, from METRIC1 down to METRIC2. The combined use of gradient, adversarial, cycle consistency, identity, and feature losses (see \ref{task1:losses}) further stabilised training and perceptual realism. 
@@ -335,7 +335,6 @@ In summary, our work extends the typical CycleGAN framework with significant enh
 \section{Introduction}
 In this project, we explore the task of translating the appearance of real-world animals into the stylistic domain of Pokémon sprites. Our approach is based on a similar architecture previously used in Task 1, adapting it to handle the challenges of domain transfer between realistic and heavily stylized imagery. We will also dive into other experiments where we have encountered failures.
 
-
 \subsection{Configuration}\label{task2:configuration}
 
 All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
@@ -343,6 +342,7 @@ All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The fo
 \begin{multicols}{3}
     \begin{itemize}
         \item Random seed: 42
+        \item Torch seed: 7193048279908058341
         \item Epochs: 501
         \item Batch size: 32
         \item Learning rate: 3e-4
@@ -376,9 +376,6 @@ We used a similar architecture as the one used in Task 1 (\ref{task1:generator})
 \paragraph{Failure From VQGAN Implementation:} 
 
 \textbf{Vector Quantization Block}\ref{fig:vq-concept} is used to convert the input image into a discrete representation, which is then passed through a series of residual blocks. The output of the residual blocks is then passed through a decoder to reconstruct the image. The vector quantization block is used to learn a set of discrete codes that can be used to represent the input image, allowing for more efficient encoding and decoding. 
-
-which will learn additional features, as animal and pokemon do not have a direct translation.
-
 
 
 \subsection{Discriminator}\label{task2:discriminator}
@@ -420,7 +417,7 @@ We decided to use Pokémon sprites as comapared to the original Pokémon art as 
 
 \noindent Notice that the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does not know exactly in what colour to use, and it does not make any informed or uninformed strong decision on how to colour. Thus, it ended up looking like a "mash-up" of the two domains, using the exact same colouring pattern. 
 
-\noindent Thus, we finalised on using the Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} that consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+\noindent Thus, we finalised on using the Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} that consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics and artstyle. (Usability 5.29, Total Image: 10.2k)
 
 \subsection{Pre-Processing}\label{task2:preprocess}
 Due to the domains being vastly different, and the images are of different formats, we had to pre-process the images before feeding them into the model so that it will learn what it needs to learn. 
@@ -483,7 +480,7 @@ As we would like the fake images to be able revertible to its original image i.e
 \subsubsection{Identity – $L_{id}$}
 Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
 \subsubsection{Feature – $L_{feat}$}
-Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
+To encourage perceptual similarity between generated Pokémon and their corresponding animal inputs, we incorporate a Feature Loss ($L_{feat}$) based on intermediate activations from our discriminator. While perceptual loss is often computed using pre-trained networks like VGG, these models are trained on datasets such as ImageNet, which do not share the stylistic or semantic characteristics of our target domain. Instead, we extract features from our task-specific discriminator, which learns domain-relevant representations during adversarial training. We use the L1 norm to compute the distance between features of the generated and target images to focus on accurate reconstruction, as it is more robust to outliers and tends to preserve texture and structure better than L2, which can overly penalize large deviations and lead to smoother, less detailed outputs.
 
 \section{Methodology}
 Similar to task 1, we also made use of \textbf{Image Pooling} (as seen in \ref{task1:image-pooling}). However, we did not employ any additional special training techniques due to the lack of time to experiment. Instead, we opted for the standard training procedure with the hyperparameters as mentioned in \ref{task2:configuration}.
