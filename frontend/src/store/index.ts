@@ -5,6 +5,14 @@ export interface Task {
   id: string;
   name: string;
   description: string;
+  conversion_key?: string;
+}
+
+export interface Model {
+  id: string;
+  name: string;
+  description: string;
+  reverse: boolean;
 }
 
 export interface TaskState {
@@ -15,6 +23,7 @@ export interface TaskState {
   progress: number;
   error: string | null;
   reverse: boolean | null;
+  selectedModel: Model | null;
 }
 
 // Define the initial task state
@@ -26,6 +35,7 @@ const initialTaskState: TaskState = {
   progress: 0,
   error: null,
   reverse: false,
+  selectedModel: null
 };
 
 // API URL
@@ -92,6 +102,26 @@ export const updateTaskPreviewAtom = atom(
         ...get(taskStatesAtom)[taskId],
         preview,
       },
+    });
+  }
+);
+
+export const updateTaskSelectedModelAtom = atom(
+  null,
+  (get, set, update: { taskId: string; model: Model | null }) => {
+    const { taskId, model } = update;
+    const taskStates = get(taskStatesAtom);
+    
+    // Also update the reverse flag based on the selected model
+    const reverse = model ? model.reverse : false;
+    
+    set(taskStatesAtom, {
+      ...taskStates,
+      [taskId]: {
+        ...taskStates[taskId],
+        selectedModel: model,
+        reverse
+      }
     });
   }
 );

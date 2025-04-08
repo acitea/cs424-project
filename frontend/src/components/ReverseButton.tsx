@@ -21,7 +21,7 @@ const ReverseButton: React.FC<ReverseButtonProps> = ({
         disabled={disabled}
         variant="outline"
         size="icon"
-        className="rounded-full p-3 h-14 w-14 border-2 hover:bg-primary/10 hover:text-primary transition-all"
+        className="rounded-full p-3 h-14 w-14 border-2 hover:bg-white hover:text-black transition-all"
         title="Reverse Input/Output"
       >
         <ArrowLeftRight className="h-8 w-8" />

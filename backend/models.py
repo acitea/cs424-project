@@ -66,13 +66,13 @@ class StyleTransferGAN(BaseGANModel):
 
 class PokemonGAN(BaseGANModel):
     """Pokemon style GAN using pretrained model"""
-    def __init__(self, reverse: bool = False):
+    def __init__(self, reverse: bool = False, model_path: str = None):
         super().__init__("pokemon_generator")
         logger.info(f"Initializing {self.name} model...")
         self.residual_blocks = 6
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
-        self.model = self._load_model(reverse)
+        self.model = self._load_model(reverse, model_path)
     
     def generate(self, input_path, output_path):
         """Transform the input image into Pokemon style"""
@@ -112,16 +112,20 @@ class PokemonGAN(BaseGANModel):
             logger.error(f"Error in Pokemon GAN generation: {e}")
             return False
     
-    def _load_model(self, reverse: bool = False):
+    def _load_model(self, reverse: bool = False, model_path: str = None):
         """Load the pretrained Pokemon generator model"""
         try:
             # Create model instance
             generator = PokemonGenerator(in_channels=3, num_residual_blocks=self.residual_blocks, use_attention=True)
             
             # Get the correct path to the weights file
-            
-            weights_path = os.path.join("weights", "task2", "forward", "PokeMalCycleGAN-96x96-G_AB-475-best.pth") if not reverse else os.path.join("weights", "task2","reverse", "PokeMalCycleGAN-96x96-G_BA-475-best.pth")
-            logger.info(f"Loading model weights from: {weights_path}")
+            if model_path:
+                weights_path = os.path.join("weights", "task2", model_path)
+                logger.info(f"Loading model weights from custom path: {weights_path}")
+            else:
+                # Fallback to default paths if no specific model path is provided
+                weights_path = os.path.join("weights", "task2", "forward", "PokeMalCycleGAN-96x96-G_AB-475-best.pth") if not reverse else os.path.join("weights", "task2", "reverse", "PokeMalCycleGAN-96x96-G_BA-475-best.pth")
+                logger.info(f"Loading model weights from default path: {weights_path}")
             
             # Load the checkpoint
             # If using CPU-only system, we need to map the tensor locations
@@ -149,19 +153,21 @@ class PokemonGAN(BaseGANModel):
             raise
 
 # Factory function to get the appropriate model
-def get_model(task_id, reverse: bool = False):
+def get_model(task_id, reverse: bool = False, model_path: str = None):
     """
     Get the appropriate GAN model based on task ID
     
     Args:
         task_id (str): Task identifier
+        reverse (bool): Whether to use reverse transformation
+        model_path (str): Path to specific model file
         
     Returns:
         BaseGANModel: The appropriate GAN model instance
     """
-    models = {
-        "task1": StyleTransferGAN(),
-        "task2": PokemonGAN(reverse=reverse),
-    }
-    
-    return models.get(task_id)
+    if task_id == "task1":
+        return StyleTransferGAN()
+    elif task_id == "task2":
+        return PokemonGAN(reverse=reverse, model_path=model_path)
+    else:
+        return None

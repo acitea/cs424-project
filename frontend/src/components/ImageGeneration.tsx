@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import ImageUploader from './ImageUploader';
 import ImageDisplay from './ImageDisplay';
 import LoadingIndicator from './LoadingIndicator';
+import ModelSelector from './ModelSelector';
 import ReverseButton from './ReverseButton';
 import { 
   activeTaskIdAtom, 
@@ -18,9 +19,11 @@ import {
   updateTaskErrorAtom,
   updateTaskReverseAtom,
   updateTaskPreviewAtom,
+  updateTaskSelectedModelAtom,
   apiUrlAtom,
   Task,
-  TaskState
+  TaskState,
+  Model
 } from '@/store';
 
 const ImageGenerationSection: React.FC = () => {
@@ -34,10 +37,22 @@ const ImageGenerationSection: React.FC = () => {
   const [, updateTaskError] = useAtom(updateTaskErrorAtom);
   const [, updateTaskReverse] = useAtom(updateTaskReverseAtom);
   const [, updateTaskPreview] = useAtom(updateTaskPreviewAtom);
+  const [, updateTaskSelectedModel] = useAtom(updateTaskSelectedModelAtom);
   const [processingTask, setProcessingTask] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getConversionKey = (taskId: string) => {
+    const currTask = tasks.find(task => task.id === taskId);
+    if (currTask) {
+      const conversionKey = currTask.conversion_key;
+      const a_b = conversionKey?.split(",");
+      if (a_b) {
+        return taskStates[taskId].reverse ? `${a_b[1]} -> ${a_b[0]}` : `${a_b[0]} -> ${a_b[1]}`;
+      }
+
+    }
+  }
   // Fetch tasks from the backend
   useEffect(() => {
     const fetchTasks = async () => {
@@ -108,8 +123,7 @@ const ImageGenerationSection: React.FC = () => {
     // Create form data
     const formData = new FormData();
     formData.append('file', taskState.file);
-    console.log('taskState.reverse upon submit:', taskState.reverse);
-    const reverseParam = taskState.reverse ? 'true' : 'false';
+    formData.append('model_path', taskState.selectedModel.id); 
 
     try {
       // Start progress simulation
@@ -121,10 +135,11 @@ const ImageGenerationSection: React.FC = () => {
       }, 300);
 
       // Make API request
-      const response = await fetch(`${apiUrl}/transform/${taskId}?reverse=${reverseParam}`, {
+      const response = await fetch(`${apiUrl}/transform/${taskId}`, {
         method: 'POST',
         body: formData,
       });
+
 
       // Clear progress simulation
       clearInterval(progressInterval);
@@ -169,7 +184,11 @@ const ImageGenerationSection: React.FC = () => {
     }
   };
 
-  // Show loading state while fetching tasks
+  const handleModelSelect = (taskId: string, model: Model) => {
+    updateTaskSelectedModel({ taskId, model });
+    updateTaskResult({ taskId, result: null });
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 flex items-center justify-center h-[400px]">
@@ -225,6 +244,24 @@ const ImageGenerationSection: React.FC = () => {
         onValueChange={setActiveTaskId}
         className="w-full"
       >
+
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Image Generation Tasks</h1>
+          
+          {/* Model Selector positioned at top right */}
+          {tasks.map(task => (
+            <div key={`model-selector-${task.id}`} className={task.id === activeTaskId ? 'block' : 'hidden'}>
+              <ModelSelector
+                taskId={task.id}
+                selectedModelId={taskStates[task.id].selectedModel?.id || ''}
+                onModelSelect={(model) => handleModelSelect(task.id, model)}
+                disabled={taskStates[task.id].loading}
+                apiUrl={apiUrl}
+                reverse={taskStates[task.id].reverse}
+              />
+            </div>
+          ))}
+        </div>
         <TabsList className="w-full max-w-md mb-8 grid" style={{ gridTemplateColumns: `repeat(${tasks.length}, minmax(0, 1fr))` }}>
           {tasks.map(task => (
             <TabsTrigger 
@@ -267,7 +304,7 @@ const ImageGenerationSection: React.FC = () => {
                     onClick={() => handleReverse(task.id)}
                     // disabled={taskState.loading || !taskState.preview || !taskState.result}
                   />
-                  <p>{taskState.reverse ? "B->A" : "A->B"}</p>
+                  <p>{getConversionKey(task.id)}</p>
                 </div>
 
                 <div className="flex flex-col items-center w-[45%]">
