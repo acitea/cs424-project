@@ -86,6 +86,8 @@ With our enhancements, we achieved the following results:
     \end{tabular}
 \end{table}
 
+\noindent Any supplementary details can be found in the Appendix \ref{task1:appendix}.
+
 \subsection{Configuration \& Hyperparameters}
 All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
 
@@ -149,7 +151,7 @@ Our generator incorporates several modern attention mechanisms and architectural
 \subsection{Discriminator}\label{task1:discriminator}
 Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification. \\
 
-Given that we have used a 256x256 image, the feature map will have size of $[B, 512, 16, 16]$, the patchGAN will have size of $[B, 1, 16, 16]$. A larger patch GAN and feature map allows us to capture more details of specific features in certain areas which allows the discriminator to provide more useful information to the generator.
+\noindent Given that we have used a 256x256 image, the feature map will have size of $[B, 512, 16, 16]$, the patchGAN will have size of $[B, 1, 16, 16]$. A larger patch GAN and feature map allows us to capture more details of specific features in certain areas which allows the discriminator to provide more useful information to the generator.
 
 
 \begin{figure}[h]
@@ -191,7 +193,7 @@ We worked with simple 99/1 split on training/validation data since we found that
 
 \section{Methodology}
 
-\subsection{Staged Training}
+\subsection{Staged Training}\label{task1:staged-training}
 Our best results came from a multi-staged supervised training approach. The idea is inspired from an application on Sketch-to-Manga colorization by Zhang et al. (2018)\footnote{Zhang, L., Li, C., Wong, T.-T., Ji, Y., \& Liu, C. (2018). Two-stage sketch colorization. ACM Transactions on Graphics, 261–261. \href{https://ttwong12.github.io/papers/colorize/colorize.pdf}{https://ttwong12.github.io/papers/colorize/colorize.pdf}}, where they utilised 2 generators using the same architecture, intended for them to have different focuses. 
 Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:cap}} where we iteratively save checkpoints of our models, measure their metrics, and we keep the best performing weights. We then use these weights as a starting point for the next stage of training.
 \paragraph*{\noindent Our novelty}stems from how we decrease the batch size, number of epochs, and evaluation threshold proportionally in each iterative stage, while using newly randomised seeds and maintaining learning rate so that our ratio of batch size to learning rate decreases\footnote{He, F., Liu, T., \& Tao, D. (2019). Control Batch Size and Learning Rate to Generalize Well: Theoretical and Empirical Evidence. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d' Alché-Buc, E. Fox, \& R. Garnett (Eds.), Advances in Neural Information Processing Systems (Vol. 32). Retrieved from \\ \href{https://proceedings.neurips.cc/paper_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}{https://proceedings.neurips.cc/paper\_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}}. This allows us to gradually refine the model's performance and achieve better results as each iteration encourages the model to learn finer details. Our intention with newly randomised seeds was to allow the optimisers to start on a different location in the loss optimisation graph, which may force it to hit a new local minima. 
@@ -239,7 +241,7 @@ Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:c
 \subsection{Image Pooling}
 An "Image Pool" was also used in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
-\section{Loss Functions}
+\section{Loss Functions}\label{task1:losses}
 
 \subsection{Discriminator Losses}
 We used a combination of loss functions beyond the standard adversarial loss to improve the performance of our discriminator. Our overall loss function for the discriminator is as follows:
@@ -249,6 +251,9 @@ We used a combination of loss functions beyond the standard adversarial loss to 
 
 \subsubsection{Gradient Penalty – $L_{gp}$}
 We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
+\begin{equation*}
+    \text{Gradient Penalty Loss} = 0.7 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{patch}} (\hat{x}) \|_2 - 1 \right)^2 \right] + 0.3 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{global}} (\hat{x}) \|_2 - 1 \right)^2 \right]
+\end{equation*}
 
 \subsubsection{Relativistic – $L_{GAN}$}
 We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equation for our relativistic loss for our "real" side is as follows, and the opposite will be applied for the "fake" side i.e. $D_{real} <=> D_{fake}, True <=> False$:
@@ -269,6 +274,10 @@ Similarly, we also use L1 Loss for our Identity loss since images in the same do
 \subsubsection{Feature – $L_{feat}$}
 Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
+\section{Conclusion}
+In summary, our work extends the typical CycleGAN framework with significant enhancements to both architecture and training methodology. By integrating advanced attention mechanisms and refined normalization techniques (see \ref{task1:generator}), and adopting a multi-staged training approach with strategically adjusted hyperparameters (see \ref{task1:staged-training}), we achieved significantly improved image quality, from METRIC1 down to METRIC2. The combined use of gradient, adversarial, cycle consistency, identity, and feature losses (see \ref{task1:losses}) further stabilised training and perceptual realism. 
+
+\section{Appendix}\label{task1:appendix}
 
 \begin{figure}[h]
     \centering
@@ -303,9 +312,8 @@ which will learn additional features, as animal and pokemon do not have a direct
 
 
 \subsection{Discriminator}
-We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. 
-
-Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$. The reasons are two-fold: 
+We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$.
+\noindent The reasons are two-fold: 
 
 \begin{itemize}
     \item The structure of an animal and pokemon being very different, so we will not want to make the discriminator too powerful. 
@@ -327,20 +335,19 @@ The animal dataset \footnote{Animal Image Dataset (90 Different Animals) – Zoo
 We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be found in the Appendix \ref{task2:poke-official-fail} \\
 
 
-The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+\noindent The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
 
 \subsection{Pre-Processing}
 Due to the domains being vastly different, and the images are of different formats, we had to pre-process the images before feeding them into the model so that it will learn what it needs to learn. 
 \subsubsection{Background Removal}
 The Pokémon sprites from the dataset are placed on a white background, whereas the animal images are not. Thus, we need to remove the background of the animal images so that the model can focus on the animals themselves rather than including how to convert the background to white. \\
 
-To do so, we used a pretrained model (VGG16) to remove the background of the animal and convert them into white background found in \verb|clean_background.py|.
+\noindent To do so, we used a pretrained model (VGG16) to remove the background of the animal and convert them into white background found in \verb|clean_background.py|.
 
 \subsubsection{No Tightly Paired Images}
 We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ensure that each Pokémon is not used too many times, as the different Pokémons are not equally represented in quantity. Since we have 1025 unique Pokémon, with different quantity of front-facing Pokémons, and 5400 different animal images, we try to ensure that each type of Pokémon sprite is at most represented 6 times. Finally, we have a total of 5400 animal-Pokémon paired images. 
 
-\paragraph*{\noindent Failure From Tight Pairs}
-Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
+\paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
 
 \begin{figure}[h]
     \centering
@@ -349,40 +356,53 @@ Before choosing to adopt a more "unsupervised learning" approach, we tried to mi
     \caption{Unsatisfactory results from tightly paired dataset}
 \end{figure}
 
-\subsection{Training/Validation}
-A simple 90/10 train-test split. So, we will have 4860 train images and 540 test images. 
-The train (4860 images) is split further to a 99/1 split, where 4811 images will be used for training, while 49 will be used for validation (visualisation of how the pokemon will look like)
 
+\subsection{Data Split}
+
+We split the pre-processed dataset into a simple 90/10 train-test split. So, we will have 4860 train images and 540 test images. The training set (4860 images) is split further to a 99/1 split, where 4811 images will be used for training, while 49 will be used for validation (visualisation of how the pokemon will look like). 
 
 
 \section{Loss Functions}
-Our overall loss functions for CycleGAN are as follows:
+Our loss functions for task 2 is identical to that of task 1 \textbf{with the exception of an additional loss, Perceptual Loss \ref{task2:generator:loss:perceptual}, for our Generator } In summary, we used a combination of loss functions beyond the standard set of losses in a CycleGAN. 
 
-
+\subsection{Discriminator Losses}
+We used a combination of loss functions beyond the standard adversarial loss to improve the performance of our discriminator. Our overall loss function for the discriminator is as follows:
 \begin{equation}
-    L_{total} = L_{GAN} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{edge} L_{edge} + \lambda_{color} L_{color}
+    L_{D} = L_{GAN} + \lambda_{gp} L_{gp}
 \end{equation}
 
-\subsection{Discriminator}
-\subsubsection{Patch}
+\subsubsection{Gradient Penalty – $L_{gp}$}
+We also use a gradient penalty, inspired from Wasserstein GAN (WGAN)\footnote{Arjovsky, M., Chintala, S., \& Bottou, L. (2017, July 17). Wasserstein Generative Adversarial networks. PMLR. \href{https://proceedings.mlr.press/v70/arjovsky17a.html}{https://proceedings.mlr.press/v70/arjovsky17a.html}} in order to prevent the discriminator from learning too fast. Doing so avoids problems like mode collapse with vanishing gradients, and ensures that the generator is always learning, even if it is not performing well enough to "beat" the discriminator yet, thus improving stability of training.
+\begin{equation*}
+    \text{Gradient Penalty Loss} = 0.7 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{patch}} (\hat{x}) \|_2 - 1 \right)^2 \right] + 0.3 \cdot \mathbb{E} \left[ \left( \| \nabla_{\hat{x}} D_{\text{global}} (\hat{x}) \|_2 - 1 \right)^2 \right]
+\end{equation*}
 
-\subsubsection{Least Squares}
+\subsubsection{Relativistic – $L_{GAN}$}
+We extend the typical adversarial loss by using a relativistic loss, which compares the logits of discriminating the real and fake images in a relative manner on a global scope with Binary Cross Entropy Loss. Furthermore, we took inspiration from PatchGAN\footnote{Isola, P., Zhu, J., Zhou, T., \& Efros, A. A. (2016). Image-to-Image Translation with Conditional Adversarial Networks. arXiv (Cornell University). \href{https://doi.org/10.48550/arxiv.1611.07004}{https://doi.org/10.48550/arxiv.1611.07004}} which whether the images is real or fake based on smaller patches, a local scope. Thus, we have another source of information for determining real or fake, which is computed with MSE loss. The equation for our relativistic loss for our "real" side is as follows, and the opposite will be applied for the "fake" side i.e. $D_{real} <=> D_{fake}, True <=> False$:
+\begin{equation}
+    L_{GAN} = 0.7 \cdot MSE(D_{real} - \bar{D}_{fake}, True)_{patch} + 0.3 \cdot BCE(D_{real} - \bar{D}_{fake}, True)_{global}
+\end{equation}
 
-\subsection{Generator}
+\subsection{Generator Losses}
+The generator also makes use of the \textbf{Relativistic} loss, which is an extension of the standard adversarial GAN loss. It also takes advantage of a pre-trained VGG16 model to compare the similarities of extracted, as referenced earlier as \textbf{Perceptual Loss}. Our overall loss function for the generator is as follows:
+\begin{equation}
+    L_{G} = L_{GAN} + \lambda_{perceptual} L_{perceptual} + \lambda_{cyc} L_{cyc} + \lambda_{id} L_{id} + \lambda_{feat} L_{feat}
+\end{equation}
 
-\subsubsection{Adversarial}
-Use basic 
+\subsubsection{Perceptual Loss – $L_{perceptual}$}\label{task2:generator:loss:perceptual}
+We used a perceptual loss, which is a combination of the content and style loss. The content loss is computed using the features extracted from the VGG16 model, while the style loss is computed using the Gram matrix of the features. The perceptual loss helps to ensure that the generated images are perceptually similar to the target images, while also maintaining the overall structure and content of the images.
 
-\subsubsection{Cycle Consistency}
+\subsubsection{Cycle Consistency – $L_{cyc}$}
+As we would like the fake images to be able revertible to its original image i.e. the pixels are identical, we maintain using L1 Loss for our Cycle Consistency.
 
-\subsubsection{Identity}
+\subsubsection{Identity – $L_{id}$}
+Similarly, we also use L1 Loss for our Identity loss since images in the same domain should not be altered. 
+\subsubsection{Feature – $L_{feat}$}
+Another extension that we incorporated is the Feature Loss, which serves as a perceptual loss that compares the features of the generated image with the target image. Although traditionally used with pre-trained networks, we used the features extracted from the training discriminator instead. These features are compared using L1 loss, which helps to ensure that the generated images are perceptually similar to the target images. 
 
-\subsubsection{Edge Consistency}
 
-\subsubsection{Color Consistency}
-
-\subsection{Adaptive Loss Weighting}
-
+\section{Conclusion}
+TIME TO CHATGPT SMTHING
 
 
 \section{Appendix}
