@@ -108,7 +108,7 @@ All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The fo
 
 \section{Architecture}
 
-\subsection{Generator}
+\subsection{Generator}\label{task1:generator}
 Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, and Self-Attention mechanisms for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below:
 
 \begin{itemize}
@@ -146,9 +146,12 @@ Our generator incorporates several modern attention mechanisms and architectural
     \end{fullwidth}
 \end{figure}
 
-\newpage
-\subsection{Discriminator}
-Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification.
+% \newpage
+\subsection{Discriminator}\label{task1:discriminator}
+Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification. \\
+
+Given that we have used a 256x256 image, the feature map will have size of $[B, 512, 16, 16]$, the patchGAN will have size of $[B, 1, 16, 16]$. A larger patch GAN and feature map allows us to capture more details of specific features in certain areas which allows the discriminator to provide more useful information to the generator.
+
 
 \begin{figure}[h]
     \centering
@@ -234,15 +237,70 @@ Another extension that we incorporated is the Feature Loss, which serves as a pe
 
 
 \section{Architecture}
-\subsection{Discriminator}
-GANs consist of two networks: a generator that creates images and a discriminator that evaluates them. The two networks are trained adversarially, with the generator trying to fool the discriminator.
-
 \subsection{Generator}
-CycleGAN extends the GAN framework by using two generator-discriminator pairs, allowing translation between domains X and Y. The key innovation is the cycle-consistency loss, which ensures that translating an image to the target domain and back produces the original image.
+We used a similar architecture as the one used in Task 1 (\ref{task1:generator}), with the following modification specific to catering for vast difference in domains.
+
+\textbf{Vector Quantization Block} is used to convert the input image into a discrete representation, which is then passed through a series of residual blocks. The output of the residual blocks is then passed through a decoder to reconstruct the image. The vector quantization block is used to learn a set of discrete codes that can be used to represent the input image, allowing for more efficient encoding and decoding. 
+
+which will learn additional features, as animal and pokemon do not have a direct translation.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{task2/vq-block.jpg}
+    \caption{Vector Quantization Block}
+\end{figure}
+
+
+
+\subsection{Discriminator}
+We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. 
+
+Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$. The reasons are two-fold: 
+
+\begin{itemize}
+    \item The structure of an animal and pokemon being very different, so we will not want to make the discriminator too powerful. 
+    \item A $[B, 256, 6, 6]$ feature map will not provide enough useful information to the generator either, thus a $[B, 256, 12, 12]$ feature map can better help the generator to identify the Pokémon sprite style.
+\end{itemize}
+
 
 
 \section{Data Preparation}
+\subsection{Collection}
+Due to our task of transfering the styles from a real-life animal to that of a Pokémon sprite, we were unable to find a paired dataset between these 2 domains. Thus, we resorted to utilising 2 individual datasets: one for the animal images, another for the Pokémon sprites, and then combining them together.
+
+\subsubsection{Animal Dataset}
+The animal dataset \footnote{Animal Image Dataset (90 Different Animals) – Zooming in on Wildlife: 5400 Animal Images Across 90 Diverse Classes \href{https://www.kaggle.com/datasets/iamsouravbanerjee/animal-image-dataset-90-different-animals}{https://www.kaggle.com/datasets/iamsouravbanerjee/animal-image-dataset-90-different-animals}} we used consists of 5400 images of animals from 90 different classes / types of animals. We decided to use all images from the animal dataset. (Usability: 10.0 Total Image: 5.4k)
+
+
+
+\subsubsection{Pokémon Sprite Dataset}
+We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be found in the Appendix \ref{task2:poke-official-fail} \\
+
+
+The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same pokemon, namely those front facing, back facing, shiny and normal. We have decided to use the normal and front facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+
 \subsection{Pre-Processing}
+\subsubsection{Background Removal}
+As we realize that most of the pokemon sprites have a white background, we decided to use a pretrained model (VGG16) to remove the background of the animal and convert them into white background.
+
+This will help the model to focus on the animal -> pokemon transformation rather than trying to convert the background to white.
+
+
+\subsubsection{No Paired Images}
+We decided to randomly pair each animal to a random pokemon and we ensure that each pokemon is not used too many times, as some pokemon have many images while some only have a few. After pairing, we have a total of 5400 animal-pokemon paired images. 
+
+
+We only have 1025 unique pokemon, with different number of front facing pokemons, with 5400 different animal images, we try to ensure that each type of pokemon sprite is equally represented (at most 6 times for the pokemon to be used)
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{task2/poke-fail2.jpg}
+    \vspace{-10pt}
+    \caption{Failed pairing}
+\end{figure}
+
+
 Used ChatGPT to generate a list of mapping of animal to pokemon variations
 
 
@@ -251,7 +309,8 @@ used a pretrained vgg16 to remove background for animals
 
 
 \subsection{Training/Validation}
-A simple 80/20 split on training data with validation
+A simple 90/10 train-test split. So, we will have 4860 train images and 540 test images. 
+The train (4860 images) is split further to a 99/1 split, where 4811 images will be used for training, while 49 will be used for validation (visualisation of how the pokemon will look like)
 
 
 
@@ -284,6 +343,22 @@ Use basic
 \subsection{Adaptive Loss Weighting}
 
 
+
+\section{Appendix}
+
+\subsubsection{Pokémon Official Art}\label{task2:poke-official-fail}
+Other dataset tried https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images
+This data consisted of 1010 official pokemon art. However, after training, the results seems to be really bad.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{task2/poke-fail1.jpg}
+    \vspace{-10pt}
+    \caption{Random sample 1}\label{fig:poke-fail1}
+\end{figure}
+
+Notice that in \ref{fig:poke-fail1} the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does now know exactly in what colour to use. We extensively researched on the reasons why and got cooked.
 
 
 
