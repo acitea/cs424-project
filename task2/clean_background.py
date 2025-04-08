@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 # Constants
 DATASET_DIR = r".\paired_dataset"
-OUTPUT_DIR = r".\paired_dataset_white_bg"
+OUTPUT_DIR = r".\clean_animal_pokemon_sprite_dataset"
 ANIMAL_SUBDIR = "animal"
 SPLITS = ["train", "val", "test"]
 
