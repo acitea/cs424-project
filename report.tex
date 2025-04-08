@@ -173,22 +173,30 @@ We started with resizing images to 128x128, with a batch size of 16 before we hi
     \centering
     \includegraphics[width=0.8\linewidth]{task1/originals.jpg}
     \vspace{-10pt}
-    \caption{Original images. Top row: Raw, Bottom row: Cartoon}
+    \caption{Original (resized 256x256). Top row: Raw, Bottom row: Cartoon}
     \vspace{12pt}
     \includegraphics[width=0.8\linewidth]{task1/top2.jpg}
     \vspace{-10pt}
-    \caption{128x128 images Avg GMS: 4.47829}
+    \caption{128x128 Avg GMS: 4.47829}
     \vspace{12pt}
     \includegraphics[width=0.8\linewidth]{task1/top1.jpg}
     \vspace{-10pt}
-    \caption{256x256 images Avg GMS: 3.85666}
+    \caption{256x256, Stage 1: Batch Size 3, Avg GMS: 3.72523}
+    \vspace{12pt}
+    \includegraphics[width=0.8\linewidth]{task1/top3-3-42.jpg}
+    \vspace{-10pt}
+    \caption{256x256, Stage 2: Batch Size 2, Avg GMS: 3.42415}
 \end{figure}
 
 \newpage
-\subsection{Training/Validation}
+\subsection{Data Split}
 We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results. \\
 
-\noindent We also made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
+\section{Training/Validation Loop}
+
+
+
+\noindent We made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}
 
@@ -278,20 +286,24 @@ The animal dataset \footnote{Animal Image Dataset (90 Different Animals) – Zoo
 We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be found in the Appendix \ref{task2:poke-official-fail} \\
 
 
-The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same pokemon, namely those front facing, back facing, shiny and normal. We have decided to use the normal and front facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
+The Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} we used consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics. (Usability 5.29, Total Image: 10.2k)
 
 \subsection{Pre-Processing}
+Due to the domains being vastly different, and the images are of different formats, we had to pre-process the images before feeding them into the model so that it will learn what it needs to learn. 
 \subsubsection{Background Removal}
-As we realize that most of the pokemon sprites have a white background, we decided to use a pretrained model (VGG16) to remove the background of the animal and convert them into white background.
+The Pokémon sprites from the dataset are placed on a white background, whereas the animal images are not. Thus, we need to remove the background of the animal images so that the model can focus on the animals themselves rather than including how to convert the background to white. \\
 
-This will help the model to focus on the animal -> pokemon transformation rather than trying to convert the background to white.
+To do so, we used a pretrained model (VGG16) to remove the background of the animal and convert them into white background found in \verb|clean_background.py|.
+
+\subsubsection{No Tightly Paired Images}
+We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ensure that each Pokémon is not used too many times, as the different Pokémons are not equally represented in quantity. Since we have 1025 unique Pokémon, with different quantity of front-facing Pokémons, and 5400 different animal images, we try to ensure that each type of Pokémon sprite is at most represented 6 times. Finally, we have a total of 5400 animal-Pokémon paired images. 
+
+\paragraph{Failure From Tight Pairs}
+Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. 
 
 
-\subsubsection{No Paired Images}
-We decided to randomly pair each animal to a random pokemon and we ensure that each pokemon is not used too many times, as some pokemon have many images while some only have a few. After pairing, we have a total of 5400 animal-pokemon paired images. 
+However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
 
-
-We only have 1025 unique pokemon, with different number of front facing pokemons, with 5400 different animal images, we try to ensure that each type of pokemon sprite is equally represented (at most 6 times for the pokemon to be used)
 
 \begin{figure}[h]
     \centering
@@ -301,7 +313,7 @@ We only have 1025 unique pokemon, with different number of front facing pokemons
 \end{figure}
 
 
-Used ChatGPT to generate a list of mapping of animal to pokemon variations
+Used ChatGPT to generate a list of mapping of animal to Pokémon variations
 
 
 used a pretrained vgg16 to remove background for animals
@@ -359,9 +371,6 @@ This data consisted of 1010 official pokemon art. However, after training, the r
 \end{figure}
 
 Notice that in \ref{fig:poke-fail1} the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does now know exactly in what colour to use. We extensively researched on the reasons why and got cooked.
-
-
-
 
 
 \bibliographystyle{plain}
