@@ -16,6 +16,7 @@
 \usepackage[outermargin=-4cm,]{fullwidth}
 \usepackage{algpseudocode}
 \usepackage{algorithm}
+\usepackage{float}
 
 \geometry{
     a4paper,
@@ -64,7 +65,7 @@
 \date{}
 \maketitle
 \begin{abstract}
-This report provides an overview of Cycle-Consistent Adversarial Networks (CycleGAN), a technique for unpaired image-to-image translation. We explore the architecture, key innovations, applications, and limitations of CycleGAN models in computer vision tasks.
+\noindent This report provides an overview of Cycle-Consistent Adversarial Networks (CycleGAN), a technique for unpaired/paired image-to-image translation. We explore the architecture, key innovations, applications, and limitations of CycleGAN models in our style transfer tasks with respect to different domains.
 \end{abstract}
 \tableofcontents
 
@@ -81,8 +82,8 @@ With our enhancements, we achieved the following results:
     \hline
     \textbf{} & \textbf{FID} & \textbf{IS} & \textbf{GMS} & \textbf{Avg GMS} \\
     \cline{1-5}
-    Raw to Cartoon     & 46.70193     & 2.41466 ± 0.24392   & 4.39783    & \multirow{2}{*}{3.85666} \\
-    Cartoon to Raw     & 39.83461         & 3.62382 ± 0.23992        & 3.31548        &            \\
+    Raw to Cartoon     & 29.50367     & 2.24014 ± 0.14796   & 3.62911    & \multirow{2}{*}{3.39350} \\
+    Cartoon to Raw     & 34.65820     & 3.47544 ± 0.26479   & 3.15789    &            \\
     \hline
     \end{tabular}
 \end{table}
@@ -163,32 +164,39 @@ Our discriminator uses a basic sequential architecture with convolutional layers
 \end{figure}
 
 
+\newpage
 \section{Data Preparation}
 \subsection{Augmentations}
-We started with resizing images to 128x128, with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations. \\
-
-\noindent After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be. \\
-
+We started with resizing images to 128x128, with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations.
+\noindent After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be.
 \noindent Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 3. Some sample results are shown in the below Figures.
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\linewidth]{task1/originals.jpg}
+    \includegraphics[width=0.75\linewidth]{task1/originals.jpg}
     \vspace{-10pt}
     \caption{Original (resized 256x256). Top row: Raw, Bottom row: Cartoon}
-    \vspace{12pt}
-    \includegraphics[width=0.8\linewidth]{task1/top2.jpg}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{task1/top2.jpg}
     \vspace{-10pt}
     \caption{128x128 Avg GMS: 4.47829}
     \vspace{12pt}
-    \includegraphics[width=0.8\linewidth]{task1/top1.jpg}
+    \includegraphics[width=0.75\linewidth]{task1/top1.jpg}
     \vspace{-10pt}
     \caption{256x256, Stage 1: Batch Size 3, Avg GMS: 3.72523}
     \vspace{12pt}
-    \includegraphics[width=0.8\linewidth]{task1/top3-3-42.jpg}
+    \includegraphics[width=0.75\linewidth]{task1/top3-3-42.jpg}
     \vspace{-10pt}
     \caption{256x256, Stage 2: Batch Size 2, Avg GMS: 3.42415}
+    \vspace{12pt}
+    \includegraphics[width=0.75\linewidth]{task1/top4-3-39.jpg}
+    \vspace{-10pt}
+    \caption{256x256, Stage 3: Batch Size 1, Avg GMS: 3.39350}
 \end{figure}
+
 
 \subsection{Data Split}
 We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results. \\
@@ -208,10 +216,10 @@ Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:c
     \hline
     Stage 1 & 3 & 100 & 10 & 1722426635407800 & -- & -- & -- & -- \\
     Stage 2 & 2 & 50  & 10 & 1812572933112200 & 100 & 100 & 100 & 100 \\
-    Stage 3 & 1 & 30  & 3  & --               & 130 & 150 & 150 & 130 \\
+    Stage 3 & 1 & 30  & 3  & 1862369469064800 & 130 & 150 & 150 & 130 \\
     \hline
     \end{tabular}
-    \caption{Configuration of hyperparameters for each stage. Model weights are based on epoch when checkpoint was created.}
+    \caption{Configuration of hyperparameters for each stage. Model weights are based on epoch when checkpoint was created. Best result from Stage 3 was at Epoch 180.}
 \end{table}
 
 \begin{algorithm}[h]
@@ -288,20 +296,8 @@ To encourage perceptual similarity between generated Pokémon and their correspo
 
 \section{Conclusion}
 In summary, our work extends the typical CycleGAN framework with significant enhancements to both architecture and training methodology. By integrating advanced attention mechanisms and refined normalization techniques (see \ref{task1:generator}), and adopting a multi-staged training approach with strategically adjusted hyperparameters (see \ref{task1:staged-training}), we achieved significantly improved image quality, from METRIC1 down to METRIC2. The combined use of gradient, adversarial, cycle consistency, identity, and feature losses (see \ref{task1:losses}) further stabilised training and perceptual realism. 
-
+\newpage
 \section{Appendix}\label{task1:appendix}
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{task1/stage1_loss.jpg}
-    \vspace{-10pt}
-    \caption{Loss curve for Stage 1 training}
-    \vspace{12pt}
-    \includegraphics[width=\linewidth]{task1/stage2_loss.jpg}
-    \vspace{-10pt}
-    \caption{Loss curve for Stage 2 training}
-    \vspace{12pt}
-\end{figure}
 
 \begin{table}[h]
     \centering
@@ -316,19 +312,35 @@ In summary, our work extends the typical CycleGAN framework with significant enh
     \hline
     \multicolumn{5}{|c|}{\textbf{Stage 2}} \\
     \hline
-    Raw to Cartoon     & 31.6551     & 2.2699 ± 0.20   & 3.7344    & \multirow{2}{*}{3.42423} \\
-    Cartoon to Raw     & 35.1988     & 3.6300 ± 0.22   & 3.1139    &            \\
+    Raw to Cartoon     & 31.65506     & 2.26991 ± 0.15301   & 3.73436    & \multirow{2}{*}{3.42423} \\
+    Cartoon to Raw     & 35.19875     & 3.63003 ± 0.37498   & 3.11392    &            \\
     \hline
     \multicolumn{5}{|c|}{\textbf{Stage 3}} \\
     \hline
-    Raw to Cartoon     & TBC     & TBC ± 0.18   & TBC    & \multirow{2}{*}{TBC} \\
-    Cartoon to Raw     & TBC     & TBC ± 0.21   & TBC    &            \\
+    Raw to Cartoon     & 29.50367     & 2.24014 ± 0.14796   & 3.62911    & \multirow{2}{*}{3.39350} \\
+    Cartoon to Raw     & 34.65820     & 3.47544 ± 0.26479   & 3.15789    &            \\
     \hline
     \end{tabular}
     \caption{Evaluation metrics across stages, best results taken from each stage}
     \label{tab:staged-eval}
 \end{table}
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{task1/stage1_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 1 training}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{task1/stage2_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 2 training}
+    \vspace{12pt}
+    \includegraphics[width=0.8\linewidth]{task1/stage3_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 3 training}
+\end{figure}
 
 
 \chapter{Task 2}
@@ -373,9 +385,8 @@ We used a similar architecture as the one used in Task 1 (\ref{task1:generator})
     \end{itemize}
 \end{multicols}
 
-\paragraph{Failure From VQGAN Implementation:} 
-
-\textbf{Vector Quantization Block}\ref{fig:vq-concept} is used to convert the input image into a discrete representation, which is then passed through a series of residual blocks. The output of the residual blocks is then passed through a decoder to reconstruct the image. The vector quantization block is used to learn a set of discrete codes that can be used to represent the input image, allowing for more efficient encoding and decoding. 
+\paragraph{Failure From VQGAN Implementation \ref{fig:vq-concept}:}We use Vector Quantization (VQ) for this task because it excels at capturing high-level semantics and fine-grained details—such as edges, strokes, and color transitions—more effectively than continuous latent distributions. By discretizing the latent space (into codebook entries), VQ helps the model focus on meaningful visual patterns that contribute to better reconstruction quality.
+\noindent In particular, the VQ block learns a set of discrete codebook entries that serve as compact representations of the input image. Additionally, it also helps that the discrete encoding not only enhances compression efficiency but also facilitates more robust and interpretable decoding during image reconstruction.
 
 
 \subsection{Discriminator}\label{task2:discriminator}
@@ -394,8 +405,7 @@ We used the same general architecture as the one used in Task 1 (\ref{task1:disc
     \caption{Task 2: Discriminator Architecture}
 \end{figure}
 
-
-
+\newpage
 \section{Data Preparation}
 \subsection{Collection}
 Due to our task of transfering the styles from a real-life animal to that of a Pokémon sprite, we were unable to find a paired dataset between these 2 domains. Thus, we resorted to utilising 2 individual datasets: one for the animal images, another for the Pokémon sprites, and then combining them together.
@@ -419,6 +429,7 @@ We decided to use Pokémon sprites as comapared to the original Pokémon art as 
 
 \noindent Thus, we finalised on using the Pokémon sprite dataset \footnote{Pokemon sprite images – Total 10,437 Pokemon sprite images in 96x96 resolution. \\ \href{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}{https://www.kaggle.com/datasets/yehongjiang/pokemon-sprites-images}} that consists of many different variations of the same Pokémon, namely those front-facing, back facing, shiny and normal. We have decided to use the normal and front-facing versions as those are the most suitable given that our animal datasets also exhibit the same characteristics and artstyle. (Usability 5.29, Total Image: 10.2k)
 
+\newpage
 \subsection{Pre-Processing}\label{task2:preprocess}
 Due to the domains being vastly different, and the images are of different formats, we had to pre-process the images before feeding them into the model so that it will learn what it needs to learn. 
 \subsubsection{Background Removal}
@@ -431,9 +442,10 @@ We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ens
 
 \paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score as compared to the non-tightly paired dataset. Furthermore, we also conducted an anonymised field test through telegram polling with students across various schools-NUS, SMU, NTU-where some specifically are involved in Pokémon clubs, and across various undergraduate years. As of writing, we have 131 responses, with $1.5x$ more people prefer the results from the randomly-paired dataset compared to the tightly paired dataset. The methodology of the poll can be found in Appendix \ref{fig:survey}. Thus, it was sufficiently convincing for us to use the randomly paired dataset method.
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{task2/poke-fail2.jpg}
+    \vspace{-6pt}
+    \includegraphics[width=0.75\textwidth]{task2/poke-fail2.jpg}
     \vspace{-10pt}
     \caption{Unsatisfactory results from tightly paired dataset}
 \end{figure}
@@ -509,27 +521,14 @@ Similar to task 1, we also made use of \textbf{Image Pooling} (as seen in \ref{t
     \label{tab:metrics}
 \end{table}
 
+
+For Animal → Pokémon, the model achieves a lower FID (96.38 vs. 205.14) and GMS (6.20 vs. 7.92), alongside higher SSIM (0.726 vs. 0.598), indicating superior structural fidelity and alignment with the target domain. This suggests the model effectively preserves structural details when transforming animals into the stylized Pokémon format. Conversely, the Pokémon → Animal direction excels in Inception Score (3.27 vs. 2.51), perceptual loss (2.74 vs. 3.05), and diversity (0.241 vs. 0.145), implying that while generated animal images may lack structural precision, they exhibit greater perceptual realism and variability. The stark FID disparity highlights the challenge of mapping stylized Pokémon back to realistic animals, likely due to domain complexity. Overall, the metrics underscore a quality-diversity trade-off: Animal → Pokémon prioritizes structural consistency, while Pokémon → Animal favors diversity and perceptual quality, necessitating task-specific optimization based on application goals.
+
 \section{Conclusion}
 In summary, our work inherits the learnings from Task 1 by introducing modifications tailored to the more challenging domain translation between animal images and Pokémon sprites. Key enhancements include the incorporation of a Vector Quantization Block for efficient encoding (see \ref{task2:generator}) and adjustments to the discriminator architecture to accommodate smaller image resolutions (see \ref{task2:discriminator}). Our data preparation strategy—featuring background removal and randomized pairing (see \ref{task2:preprocess})—ensured the model could efficiently learn the differences between the two domains. Finally, by integrating an additional Perceptual Loss into our loss functions (see \ref{task2:generator:loss:perceptual}), we further improved the perceptual fidelity of the generated images while maintaining training stability as seen from our metrics, utilising both subjective and objective analysis (see \ref{task2:metrics}). These innovations together present a robust solution for unsupervised style transfer between highly disparate visual domains.
 
-
+\newpage
 \section{Appendix}
-
-\subsection{Randomly Paired vs Supervised Paired Dataset Preference}
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.7\textwidth]{task2/subjectivePolling.png}
-    \vspace{-10pt}
-    \caption{Context given to polling participants}
-    \vspace{12pt}
-    \includegraphics[width=0.7\textwidth]{task2/surveyResults.png}
-    \vspace{-10pt}
-    \caption{Poll Results}
-    \vspace{12pt}
-    \label{fig:survey}
-\end{figure}
-
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{task2/vq-block.jpg}
@@ -537,6 +536,19 @@ In summary, our work inherits the learnings from Task 1 by introducing modificat
     \label{fig:vq-concept}
 \end{figure}
 
+\subsection{Randomly Paired vs Supervised Paired Dataset Preference}
+
+
+\begin{minipage}[t]{.5\textwidth}\label{fig:survey}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[width=0.9\textwidth]{task2/subjectivePolling.png}}
+    \\Context given to polling participants
+\end{minipage}
+\begin{minipage}[t]{.5\textwidth}
+    \centering
+    \adjustbox{valign=t}{\includegraphics[width=\textwidth]{task2/surveyResults.png}}
+    \\Poll Results
+\end{minipage}
 
 \begin{figure}[h]
     \centering
