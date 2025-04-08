@@ -66,13 +66,13 @@ class StyleTransferGAN(BaseGANModel):
 
 class PokemonGAN(BaseGANModel):
     """Pokemon style GAN using pretrained model"""
-    def __init__(self):
+    def __init__(self, reverse: bool = False):
         super().__init__("pokemon_generator")
         logger.info(f"Initializing {self.name} model...")
         self.residual_blocks = 6
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
-        self.model = self._load_model()
+        self.model = self._load_model(reverse)
     
     def generate(self, input_path, output_path):
         """Transform the input image into Pokemon style"""
@@ -112,15 +112,15 @@ class PokemonGAN(BaseGANModel):
             logger.error(f"Error in Pokemon GAN generation: {e}")
             return False
     
-    def _load_model(self):
+    def _load_model(self, reverse: bool = False):
         """Load the pretrained Pokemon generator model"""
         try:
             # Create model instance
             generator = PokemonGenerator(in_channels=3, num_residual_blocks=self.residual_blocks, use_attention=True)
             
             # Get the correct path to the weights file
-            # weights_path = os.path.join("weights", "task2", "PokemonCycleGanGAB.pth")
-            weights_path = os.path.join("weights", "task2", "PokeMalCycleGAN-96x96-G_AB-475-best.pth")
+            
+            weights_path = os.path.join("weights", "task2", "forward", "PokeMalCycleGAN-96x96-G_AB-475-best.pth") if not reverse else os.path.join("weights", "task2","reverse", "PokeMalCycleGAN-96x96-G_BA-475-best.pth")
             logger.info(f"Loading model weights from: {weights_path}")
             
             # Load the checkpoint
@@ -149,7 +149,7 @@ class PokemonGAN(BaseGANModel):
             raise
 
 # Factory function to get the appropriate model
-def get_model(task_id):
+def get_model(task_id, reverse: bool = False):
     """
     Get the appropriate GAN model based on task ID
     
@@ -161,7 +161,7 @@ def get_model(task_id):
     """
     models = {
         "task1": StyleTransferGAN(),
-        "task2": PokemonGAN()
+        "task2": PokemonGAN(reverse=reverse),
     }
     
     return models.get(task_id)

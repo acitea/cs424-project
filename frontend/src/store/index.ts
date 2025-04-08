@@ -14,6 +14,7 @@ export interface TaskState {
   loading: boolean;
   progress: number;
   error: string | null;
+  reverse: boolean | null;
 }
 
 // Define the initial task state
@@ -24,6 +25,7 @@ const initialTaskState: TaskState = {
   loading: false,
   progress: 0,
   error: null,
+  reverse: false,
 };
 
 // API URL
@@ -57,12 +59,25 @@ export const taskStatesAtom = atom<Record<string, TaskState>>({
 // Derived atoms for updating specific parts of the task state
 export const updateTaskFileAtom = atom(
   null,
-  (get, set, { taskId, file }: { taskId: string; file: File | null }) => {
+  (get, set, { taskId, file}: { taskId: string; file: File | null;}) => {
     set(taskStatesAtom, {
       ...get(taskStatesAtom),
       [taskId]: {
         ...get(taskStatesAtom)[taskId],
         file,
+      },
+    });
+  }
+);
+
+export const updateTaskReverseAtom = atom(
+  null,
+  (get, set, { taskId, reverse}: { taskId: string; reverse: boolean | null;}) => {
+    set(taskStatesAtom, {
+      ...get(taskStatesAtom),
+      [taskId]: {
+        ...get(taskStatesAtom)[taskId],
+        reverse,
       },
     });
   }

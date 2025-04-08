@@ -67,6 +67,7 @@ async def get_tasks():
 @app.post("/transform/{task_id}")
 async def transform_image(
     task_id: str,
+    reverse: bool,
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None
 ):
@@ -82,7 +83,8 @@ async def transform_image(
     """
     try:
         # Check if the task is valid
-        model = get_model(task_id)
+        logger.info(f"Received request for task {task_id} with reverse={reverse}")
+        model = get_model(task_id, reverse=reverse)
         if not model:
             raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
         

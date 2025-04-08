@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import ImageUploader from './ImageUploader';
 import ImageDisplay from './ImageDisplay';
 import LoadingIndicator from './LoadingIndicator';
+import ReverseButton from './ReverseButton';
 import { 
   activeTaskIdAtom, 
   tasksAtom, 
@@ -15,6 +16,8 @@ import {
   updateTaskLoadingAtom,
   updateTaskProgressAtom,
   updateTaskErrorAtom,
+  updateTaskReverseAtom,
+  updateTaskPreviewAtom,
   apiUrlAtom,
   Task,
   TaskState
@@ -29,6 +32,8 @@ const ImageGenerationSection: React.FC = () => {
   const [, updateTaskLoading] = useAtom(updateTaskLoadingAtom);
   const [, updateTaskProgress] = useAtom(updateTaskProgressAtom);
   const [, updateTaskError] = useAtom(updateTaskErrorAtom);
+  const [, updateTaskReverse] = useAtom(updateTaskReverseAtom);
+  const [, updateTaskPreview] = useAtom(updateTaskPreviewAtom);
   const [processingTask, setProcessingTask] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +65,8 @@ const ImageGenerationSection: React.FC = () => {
               result: null,
               loading: false,
               progress: 0,
-              error: null
+              error: null,
+              reverse: false,
             };
           });
           
@@ -96,11 +102,14 @@ const ImageGenerationSection: React.FC = () => {
     updateTaskLoading({ taskId, loading: true });
     updateTaskProgress({ taskId, progress: 0 });
     updateTaskError({ taskId, error: null });
+    updateTaskReverse({ taskId, reverse: taskState.reverse });
     setProcessingTask(taskId);
 
     // Create form data
     const formData = new FormData();
     formData.append('file', taskState.file);
+    console.log('taskState.reverse upon submit:', taskState.reverse);
+    const reverseParam = taskState.reverse ? 'true' : 'false';
 
     try {
       // Start progress simulation
@@ -112,7 +121,7 @@ const ImageGenerationSection: React.FC = () => {
       }, 300);
 
       // Make API request
-      const response = await fetch(`${apiUrl}/transform/${taskId}`, {
+      const response = await fetch(`${apiUrl}/transform/${taskId}?reverse=${reverseParam}`, {
         method: 'POST',
         body: formData,
       });
@@ -191,6 +200,21 @@ const ImageGenerationSection: React.FC = () => {
     );
   }
 
+  const handleReverse = (taskId: string) => {
+    const taskState = taskStates[taskId];
+
+    const tempPreview = taskState.preview;
+    const tempResult = taskState.result;
+    
+    
+    updateTaskResult({ taskId, result: tempResult });
+    updateTaskPreview({ taskId, preview: tempPreview });
+    updateTaskReverse({ taskId, reverse: !taskState.reverse });
+    console.log('Reversing input and output images');
+    console.log('reverse:', taskState.reverse);
+    toast.success('Input and output images reversed');
+  };
+
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Image Transformation Studio</h1>
@@ -227,8 +251,8 @@ const ImageGenerationSection: React.FC = () => {
                 {task.description}
               </p>
               
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
+              <div className="flex flex-row items-center justify-between">
+                <div className="flex flex-col items-center w-[45%]">
                   <h3 className="text-lg font-medium mb-3">Input</h3>
                   <ImageUploader 
                     label="Upload Source Image"
@@ -238,7 +262,15 @@ const ImageGenerationSection: React.FC = () => {
                   />
                 </div>
                 
-                <div>
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <ReverseButton 
+                    onClick={() => handleReverse(task.id)}
+                    // disabled={taskState.loading || !taskState.preview || !taskState.result}
+                  />
+                  <p>{taskState.reverse ? "B->A" : "A->B"}</p>
+                </div>
+
+                <div className="flex flex-col items-center w-[45%]">
                   <h3 className="text-lg font-medium mb-3">Output</h3>
                   <ImageDisplay 
                     title="Generated Image"
