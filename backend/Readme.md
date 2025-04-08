@@ -39,6 +39,7 @@ frontend/
 
 ### Backend (FastAPI + Python)
 
+```
 .
 ├── uploads/              # Temporary storage for uploaded images
 ├── results/              # Output directory for transformed images
@@ -51,6 +52,7 @@ frontend/
 ├── bg_removal.py         # Background removal utilities
 ├── download_cleaner.py   # U2NET downloader
 └── main.py               # FastAPI application
+```
 
 ## Setup and Installation
 
