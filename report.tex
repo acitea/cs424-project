@@ -13,6 +13,8 @@
 \usepackage{adjustbox}
 \usepackage{multicol}
 \usepackage[outermargin=-4cm,]{fullwidth}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
 
 \geometry{
     a4paper,
@@ -90,9 +92,6 @@ All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The fo
 \begin{multicols}{3}
     \begin{itemize}
         \item Random seed: 42
-        \item Torch seed: 1722426635407800
-        \item Epochs: 100
-        \item Batch size: 3
         \item Learning rate: 2e-4
         \item Betas: (0.5, 0.999)
         \item $Scheduler_{t-0}$: 10
@@ -168,7 +167,6 @@ We started with resizing images to 128x128, with a batch size of 16 before we hi
 
 \noindent Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 3. Some sample results are shown in the below Figures.
 
-\newpage
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.8\linewidth]{task1/originals.jpg}
@@ -188,15 +186,58 @@ We started with resizing images to 128x128, with a batch size of 16 before we hi
     \caption{256x256, Stage 2: Batch Size 2, Avg GMS: 3.42415}
 \end{figure}
 
-\newpage
 \subsection{Data Split}
 We worked with simple 99/1 split on training/validation data since we found that we needed as much data as possible for training the model to achieve our best results. \\
 
-\section{Training/Validation Loop}
+\section{Methodology}
 
+\subsection{Staged Training}
+Our best results came from a multi-staged supervised training approach. The idea is inspired from an application on Sketch-to-Manga colorization by Zhang et al. (2018)\footnote{Zhang, L., Li, C., Wong, T.-T., Ji, Y., \& Liu, C. (2018). Two-stage sketch colorization. ACM Transactions on Graphics, 261–261. \href{https://ttwong12.github.io/papers/colorize/colorize.pdf}{https://ttwong12.github.io/papers/colorize/colorize.pdf}}, where they utilised 2 generators using the same architecture, intended for them to have different focuses. 
+Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:cap}} where we iteratively save checkpoints of our models, measure their metrics, and we keep the best performing weights. We then use these weights as a starting point for the next stage of training.
+\paragraph*{\noindent Our novelty}stems from how we decrease the batch size, number of epochs, and evaluation threshold proportionally in each iterative stage, while using newly randomised seeds and maintaining learning rate so that our ratio of batch size to learning rate decreases\footnote{He, F., Liu, T., \& Tao, D. (2019). Control Batch Size and Learning Rate to Generalize Well: Theoretical and Empirical Evidence. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d' Alché-Buc, E. Fox, \& R. Garnett (Eds.), Advances in Neural Information Processing Systems (Vol. 32). Retrieved from \\ \href{https://proceedings.neurips.cc/paper_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}{https://proceedings.neurips.cc/paper\_files/paper/2019/file/dc6a70712a252123c40d2adba6a11d84-Paper.pdf}}. This allows us to gradually refine the model's performance and achieve better results as each iteration encourages the model to learn finer details. Our intention with newly randomised seeds was to allow the optimisers to start on a different location in the loss optimisation graph, which may force it to hit a new local minima. 
 
+\begin{align*}
+    Batch Sizes = [3, 2, 1] \quad& Epochs = [100, 50, 30] \quad Eval Threshold = [10, 5, 3] \quad &TorchSeed = [1722426635407800, smth smth]
+\end{align*}
 
-\noindent We made use of an "Image Pool" to help in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
+\begin{algorithm}[h]
+    \caption{Basic Training Loop Single Stage}\label{alg:cap}
+    \begin{algorithmic}
+    \Procedure{trainModel}{$D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}, batchSize, epochs, evalThreshold$} \Comment{weights for models}
+        \State $D_{A} \gets D^w_{A}$
+        \State $D_{B} \gets D^w_{B}$
+        \State $G_{AB} \gets G^w_{AB}$
+        \State $G_{BA} \gets G^w_{BA}$
+        \State $n \gets 1$
+        \State $W\_history \gets [\quad]$
+        \While{$n \neq epochs$}\Comment{Run basic training loop}
+            \State$Train \quad D_{A}, D_{B}, G_{AB}, G_{BA} \quad with \quad Domain_A, Domain_B, batchSize$
+            \If{$n \mod evalThreshold = 0$}
+                \State $W\_history.insert({D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}})$
+            \EndIf
+            \State $n \gets n + 1$
+        \EndWhile
+        \State $bestGMS \gets inf$
+        \State $bestW \gets {D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}}$
+        \For{\texttt{$w_{e} \in W$}} \Comment{Evaluate each weight with test sets}
+            \State $D_{A} \gets D^{w_{e}}_{A}$
+            \State $D_{B} \gets D^{w_{e}}_{B}$
+            \State $G_{AB} \gets G^{w_{e}}_{AB}$
+            \State $G_{BA} \gets G^{w_{e}}_{BA}$
+            \State $epochGMS \gets Compute \quad GMS$
+            \If{$epochGMS < bestGMS$}
+                \State $bestGMS \gets epochGMS$
+                \State $bestW \gets w_{e}$
+            \EndIf
+        \EndFor
+        \State \Return $bestW$ \Comment{Returns the best weights}
+    \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+\newpage
+\subsection{Image Pooling}
+An "Image Pool" was also used in training. This pool functions as a buffer to store previously generated images, which helps to reduce the risk of mode collapse where the Discriminator becomes too powerful, and prevents the Generator from learning anything new. The pool is updated with new generated fake images during training, and once the threshold is reached, we randomly sample from the available pool instead of using the latest generated image. 
 
 \section{Loss Functions}
 
@@ -298,27 +339,15 @@ To do so, we used a pretrained model (VGG16) to remove the background of the ani
 \subsubsection{No Tightly Paired Images}
 We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ensure that each Pokémon is not used too many times, as the different Pokémons are not equally represented in quantity. Since we have 1025 unique Pokémon, with different quantity of front-facing Pokémons, and 5400 different animal images, we try to ensure that each type of Pokémon sprite is at most represented 6 times. Finally, we have a total of 5400 animal-Pokémon paired images. 
 
-\paragraph{Failure From Tight Pairs}
-Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. 
-
-
-However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
-
+\paragraph*{\noindent Failure From Tight Pairs}
+Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score of ~6.5 as compared to the non-tightly paired dataset of ~5.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{task2/poke-fail2.jpg}
     \vspace{-10pt}
-    \caption{Failed pairing}
+    \caption{Unsatisfactory results from tightly paired dataset}
 \end{figure}
-
-
-Used ChatGPT to generate a list of mapping of animal to Pokémon variations
-
-
-used a pretrained vgg16 to remove background for animals
-
-
 
 \subsection{Training/Validation}
 A simple 90/10 train-test split. So, we will have 4860 train images and 540 test images. 
