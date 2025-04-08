@@ -88,7 +88,7 @@ With our enhancements, we achieved the following results:
     \end{tabular}
 \end{table}
 
-\noindent Further supplementary details can be found in the Appendix \ref{task1:appendix}.
+\noindent Further supplementary details can be found in the Task 1 Appendix \ref{task1:appendix}.
 
 \subsection{Configuration \& Hyperparameters}
 All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The following hyperparameters and loss weights were used for our best results:
@@ -112,7 +112,7 @@ All optimisers used Adam with a Cosine Annealing Warm Restarts scheduler. The fo
 \section{Architecture}
 
 \subsection{Generator}\label{task1:generator}
-Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, Self-Attention mechanisms, Spacial Attention Blocks and Channel Attention Blocks for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below:
+Our generator incorporates several modern attention mechanisms and architectural techniques including Convolutional Block Attention Module (CBAM), Squeeze-and-Excitation (SE) blocks, Self-Attention mechanisms, Spacial Attention Blocks and Channel Attention Blocks for improved feature representation, generating higher-quality images with better detail preservation, style consistency, and structural coherence. Some of our key design choices are listed below and the figure can be found in Appendix \ref{task1:generator:figure}.
 
 \begin{itemize}
     \item \textbf{Instance Normalization:} Used throughout the network instead of batch normalization, as it has been shown to produce better results for style transfer and image-to-image translation by normalizing each instance independently.
@@ -133,23 +133,6 @@ Our generator incorporates several modern attention mechanisms and architectural
 
 \end{itemize}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\linewidth]{task1/generator-architecture-h.png}
-    \caption{Generator Architecture}
-    \begin{fullwidth}[innermargin=-2cm,width=\linewidth+4cm,nobreak]
-        \begin{minipage}[t]{.5\textwidth}
-            \centering
-            \adjustbox{valign=t}{\includegraphics[scale=0.5]{task1/self-attn.jpg}}
-            \\Self Attention Block
-        \end{minipage}
-        \begin{minipage}[t]{.5\textwidth}
-            \centering
-            \adjustbox{valign=t}{\includegraphics[scale=0.31]{task1/cbam.jpg}}
-        \end{minipage}
-    \end{fullwidth}
-\end{figure}
-
 % \newpage
 \subsection{Discriminator}\label{task1:discriminator}
 Our discriminator uses a basic sequential architecture with convolutional layers that doubles in number of channels 3 times, from 64 to 512 and downsizing the image size by half 4 times to 16x16. Each convolution output is passed to a spectral norm layer, instance normalisation and a leaky relu activation function. We then branched into a Avg Pool into a FC layer for global classification and a PatchGAN block for local classification. \\
@@ -169,33 +152,7 @@ Our discriminator uses a basic sequential architecture with convolutional layers
 \subsection{Augmentations}
 We started with resizing images to 128x128, with a batch size of 16 before we hit a memory limit. We also applied no augmentations to the images, as a baseline to compare against later on when we add augmentations.
 \noindent After adding various minor augmentations like affines, color jitters, flips, light gaussian blurs and posterising, we found that any combination of them resulted in worse metrics overall. From visual inspection, we found that the generated raw images were more noisy than without augmentations, which could contribute to the worse metrics. Furthermore, the generated cartoon images were a lot more flat than the target images, losing a lot more of the finer details and textures. Lastly, affines and any crops were clearly visible in the generated images when they otherwise should not be.
-\noindent Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 3. Some sample results are shown in the below Figures.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\linewidth]{task1/originals.jpg}
-    \vspace{-10pt}
-    \caption{Original (resized 256x256). Top row: Raw, Bottom row: Cartoon}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\linewidth]{task1/top2.jpg}
-    \vspace{-10pt}
-    \caption{128x128 Avg GMS: 4.47829}
-    \vspace{12pt}
-    \includegraphics[width=0.75\linewidth]{task1/top1.jpg}
-    \vspace{-10pt}
-    \caption{256x256, Stage 1: Batch Size 3, Avg GMS: 3.72523}
-    \vspace{12pt}
-    \includegraphics[width=0.75\linewidth]{task1/top3-3-42.jpg}
-    \vspace{-10pt}
-    \caption{256x256, Stage 2: Batch Size 2, Avg GMS: 3.42415}
-    \vspace{12pt}
-    \includegraphics[width=0.75\linewidth]{task1/top4-3-39.jpg}
-    \vspace{-10pt}
-    \caption{256x256, Stage 3: Batch Size 1, Avg GMS: 3.39350}
-\end{figure}
+\noindent Thus, in both cases, we believe that adding the augmentations were encouraging the model to over-process the style conversions, which likely caused the reduction in metrics. Finally our best result was achieved with no augmentations, and upscaling the images to 256x256 with a batch size of 3. Some sample results are shown in the figures found in Appendix \ref{task1:sample-images}.
 
 
 \subsection{Data Split}
@@ -221,41 +178,6 @@ Our methodology follows a "greedy" approach seen in \textbf{Algorithm \ref{alg:c
     \end{tabular}
     \caption{Configuration of hyperparameters for each stage. Model weights are based on epoch when checkpoint was created. Best result from Stage 3 was at Epoch 180.}
 \end{table}
-
-\begin{algorithm}[h]
-    \caption{Basic Training Loop Single Stage}\label{alg:cap}
-    \begin{algorithmic}
-    \Procedure{trainModel}{$D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}, batchSize, epochs, evalThreshold$} \Comment{weights for models}
-        \State $D_{A} \gets D^w_{A}$
-        \State $D_{B} \gets D^w_{B}$
-        \State $G_{AB} \gets G^w_{AB}$
-        \State $G_{BA} \gets G^w_{BA}$
-        \State $n \gets 1$
-        \State $W\_history \gets [\quad]$
-        \While{$n \neq epochs$}\Comment{Run basic training loop}
-            \State$Train \quad D_{A}, D_{B}, G_{AB}, G_{BA} \quad with \quad Domain_A, Domain_B, batchSize$
-            \If{$n \mod evalThreshold = 0$}
-                \State $W\_history.insert({D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}})$
-            \EndIf
-            \State $n \gets n + 1$
-        \EndWhile
-        \State $bestGMS \gets inf$
-        \State $bestW \gets {D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}}$
-        \For{\texttt{$w_{e} \in W$}} \Comment{Evaluate each weight with test sets}
-            \State $D_{A} \gets D^{w_{e}}_{A}$
-            \State $D_{B} \gets D^{w_{e}}_{B}$
-            \State $G_{AB} \gets G^{w_{e}}_{AB}$
-            \State $G_{BA} \gets G^{w_{e}}_{BA}$
-            \State $epochGMS \gets Compute \quad GMS$
-            \If{$epochGMS < bestGMS$}
-                \State $bestGMS \gets epochGMS$
-                \State $bestW \gets w_{e}$
-            \EndIf
-        \EndFor
-        \State \Return $bestW$ \Comment{Returns the best weights}
-    \EndProcedure
-    \end{algorithmic}
-\end{algorithm}
 
 \newpage
 \subsection{Image Pooling}\label{task1:image-pooling}
@@ -297,51 +219,6 @@ To encourage perceptual similarity between generated Pokémon and their correspo
 \section{Conclusion}
 In summary, our work extends the typical CycleGAN framework with significant enhancements to both architecture and training methodology. By integrating advanced attention mechanisms and refined normalization techniques (see \ref{task1:generator}), and adopting a multi-staged training approach with strategically adjusted hyperparameters (see \ref{task1:staged-training}), we achieved significantly improved image quality, from METRIC1 down to METRIC2. The combined use of gradient, adversarial, cycle consistency, identity, and feature losses (see \ref{task1:losses}) further stabilised training and perceptual realism. 
 \newpage
-\section{Appendix}\label{task1:appendix}
-
-\begin{table}[h]
-    \centering
-    \begin{tabular}{|l|c|c|c|c|}
-    \hline
-    \textbf{Stage / Direction} & \textbf{FID} $\downarrow$ & \textbf{IS} $\uparrow$ & \textbf{GMS} $\downarrow$ & \textbf{Avg GMS} $\downarrow$ \\
-    \hline
-    \multicolumn{5}{|c|}{\textbf{Stage 1}} \\
-    \hline
-    Raw to Cartoon     & 46.70193     & 2.41466 ± 0.24392   & 4.39783    & \multirow{2}{*}{3.85666} \\
-    Cartoon to Raw     & 39.83461         & 3.62382 ± 0.23992        & 3.31548        &            \\
-    \hline
-    \multicolumn{5}{|c|}{\textbf{Stage 2}} \\
-    \hline
-    Raw to Cartoon     & 31.65506     & 2.26991 ± 0.15301   & 3.73436    & \multirow{2}{*}{3.42423} \\
-    Cartoon to Raw     & 35.19875     & 3.63003 ± 0.37498   & 3.11392    &            \\
-    \hline
-    \multicolumn{5}{|c|}{\textbf{Stage 3}} \\
-    \hline
-    Raw to Cartoon     & 29.50367     & 2.24014 ± 0.14796   & 3.62911    & \multirow{2}{*}{3.39350} \\
-    Cartoon to Raw     & 34.65820     & 3.47544 ± 0.26479   & 3.15789    &            \\
-    \hline
-    \end{tabular}
-    \caption{Evaluation metrics across stages, best results taken from each stage}
-    \label{tab:staged-eval}
-\end{table}
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.8\textwidth]{task1/stage1_loss.jpg}
-    \vspace{-10pt}
-    \caption{Loss curves for Stage 1 training}
-\end{figure}
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.8\linewidth]{task1/stage2_loss.jpg}
-    \vspace{-10pt}
-    \caption{Loss curves for Stage 2 training}
-    \vspace{12pt}
-    \includegraphics[width=0.8\linewidth]{task1/stage3_loss.jpg}
-    \vspace{-10pt}
-    \caption{Loss curves for Stage 3 training}
-\end{figure}
-
 
 \chapter{Task 2}
 \section{Introduction}
@@ -390,20 +267,13 @@ We used a similar architecture as the one used in Task 1 (\ref{task1:generator})
 
 
 \subsection{Discriminator}\label{task2:discriminator}
-We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$.
+We used the same general architecture as the one used in Task 1 (\ref{task1:discriminator}), with a few modifications specific to catering for the smaller images. Since our Pokémon sprite sizes are only 96x96, we removed the last downsampling layer of the discriminator so bottleneck/features will be capped at $[B, 256, 12, 12]$. A diagram of the discriminator can be found in Figure \ref{task2:discriminator-architecture}.
 \noindent The reasons are two-fold: 
 
 \begin{itemize}
     \item The structure of an animal and pokemon being very different, so we will not want to make the discriminator too powerful. 
     \item A $[B, 256, 6, 6]$ feature map will not provide enough useful information to the generator either, thus a $[B, 256, 12, 12]$ feature map can better help the generator to identify the Pokémon sprite style.
 \end{itemize}
-
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.7\textwidth]{task2/discriminatorArchitecture.jpg}
-    \caption{Task 2: Discriminator Architecture}
-\end{figure}
 
 \newpage
 \section{Data Preparation}
@@ -418,12 +288,6 @@ The animal dataset \footnote{Animal Image Dataset (90 Different Animals) – Zoo
 \subsubsection{Pokémon Sprite Dataset}
 We decided to use Pokémon sprites as comapared to the original Pokémon art as we there is a distinct style to how Pokémon sprites are. Furthermore, using the original Pokémon art would not be suitable for a "style transfer" as we felt that the original art is at the prerogative of the individual artists when they created them. Thus, the styles across Pokémon will not be consistent, and our model will find it very difficult to learn the mapping between the two domains. Our failed attempts can be seen in Figure \ref{fig:poke-fail1} using this dataset\footnote{All Pokemon Official Artworks – A Comprehensive Dataset of All 1010 Official Pokémon Artworks \href{https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images}{https://www.kaggle.com/datasets/hesselaar/all-pokemon-official-images}}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.7\textwidth]{task2/poke-fail1.jpg}
-    \vspace{-10pt}
-    \caption{Unacceptable style transfer with Pokémon Official Art}\label{fig:poke-fail1}
-\end{figure}
 
 \noindent Notice that the generated image does not resemble Pokémon art at all. We suspect that it is trying to colour the animal images in but it does not know exactly in what colour to use, and it does not make any informed or uninformed strong decision on how to colour. Thus, it ended up looking like a "mash-up" of the two domains, using the exact same colouring pattern. 
 
@@ -440,16 +304,7 @@ The Pokémon sprites from the dataset are placed on a white background, whereas 
 \subsubsection{No Tightly Paired Images}
 We \textbf{randomly} paired each animal to a \textbf{random} Pokémon and we ensure that each Pokémon is not used too many times, as the different Pokémons are not equally represented in quantity. Since we have 1025 unique Pokémon, with different quantity of front-facing Pokémons, and 5400 different animal images, we try to ensure that each type of Pokémon sprite is at most represented 6 times. Finally, we have a total of 5400 animal-Pokémon paired images. 
 
-\paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar, it has a much worse GMS score as compared to the non-tightly paired dataset. Furthermore, we also conducted an anonymised field test through telegram polling with students across various schools-NUS, SMU, NTU-where some specifically are involved in Pokémon clubs, and across various undergraduate years. As of writing, we have 131 responses, with $1.5x$ more people prefer the results from the randomly-paired dataset compared to the tightly paired dataset. The methodology of the poll can be found in Appendix \ref{fig:survey}. Thus, it was sufficiently convincing for us to use the randomly paired dataset method.
-
-\begin{figure}[H]
-    \centering
-    \vspace{-6pt}
-    \includegraphics[width=0.75\textwidth]{task2/poke-fail2.jpg}
-    \vspace{-10pt}
-    \caption{Unsatisfactory results from tightly paired dataset}
-\end{figure}
-
+\paragraph{Failure From Tight Pairs:} Before choosing to adopt a more "unsupervised learning" approach, we tried to mimic a "supervised learning" by mapping the animals to a specific Pokémon based on how similar their general designs are. However, we found that the results were \textbf{not satisfactory}. Although it does look like a Pokémon sprite from afar as seen in Figure \ref{fig:poke-fail2}, it has a much worse GMS score as compared to the non-tightly paired dataset. Furthermore, we also conducted an anonymised field test through telegram polling with students across various schools-NUS, SMU, NTU-where some specifically are involved in Pokémon clubs, and across various undergraduate years. As of writing, we have 131 responses, with $1.5x$ more people prefer the results from the randomly-paired dataset compared to the tightly paired dataset. The methodology of the poll can be found in Appendix \ref{fig:survey}. Thus, it was sufficiently convincing for us to use the randomly paired dataset method.
 
 \subsection{Data Split}
 
@@ -527,8 +382,159 @@ For Animal → Pokémon, the model achieves a lower FID (96.38 vs. 205.14) and G
 \section{Conclusion}
 In summary, our work inherits the learnings from Task 1 by introducing modifications tailored to the more challenging domain translation between animal images and Pokémon sprites. Key enhancements include the incorporation of a Vector Quantization Block for efficient encoding (see \ref{task2:generator}) and adjustments to the discriminator architecture to accommodate smaller image resolutions (see \ref{task2:discriminator}). Our data preparation strategy—featuring background removal and randomized pairing (see \ref{task2:preprocess})—ensured the model could efficiently learn the differences between the two domains. Finally, by integrating an additional Perceptual Loss into our loss functions (see \ref{task2:generator:loss:perceptual}), we further improved the perceptual fidelity of the generated images while maintaining training stability as seen from our metrics, utilising both subjective and objective analysis (see \ref{task2:metrics}). These innovations together present a robust solution for unsupervised style transfer between highly disparate visual domains.
 
-\newpage
-\section{Appendix}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+
+\chapter{Appendix}
+\section{Task 1}\label{task1:appendix}
+
+\begin{algorithm}[h]
+    \caption{Basic Training Loop Single Stage}\label{alg:cap}
+    \begin{algorithmic}
+    \Procedure{trainModel}{$D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}, batchSize, epochs, evalThreshold$} \Comment{weights for models}
+        \State $D_{A} \gets D^w_{A}$
+        \State $D_{B} \gets D^w_{B}$
+        \State $G_{AB} \gets G^w_{AB}$
+        \State $G_{BA} \gets G^w_{BA}$
+        \State $n \gets 1$
+        \State $W\_history \gets [\quad]$
+        \While{$n \neq epochs$}\Comment{Run basic training loop}
+            \State$Train \quad D_{A}, D_{B}, G_{AB}, G_{BA} \quad with \quad Domain_A, Domain_B, batchSize$
+            \If{$n \mod evalThreshold = 0$}
+                \State $W\_history.insert({D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}})$
+            \EndIf
+            \State $n \gets n + 1$
+        \EndWhile
+        \State $bestGMS \gets inf$
+        \State $bestW \gets {D^w_{A}, D^w_{B}, G^w_{AB}, G^w_{BA}}$
+        \For{\texttt{$w_{e} \in W$}} \Comment{Evaluate each weight with test sets}
+            \State $D_{A} \gets D^{w_{e}}_{A}$
+            \State $D_{B} \gets D^{w_{e}}_{B}$
+            \State $G_{AB} \gets G^{w_{e}}_{AB}$
+            \State $G_{BA} \gets G^{w_{e}}_{BA}$
+            \State $epochGMS \gets Compute \quad GMS$
+            \If{$epochGMS < bestGMS$}
+                \State $bestGMS \gets epochGMS$
+                \State $bestW \gets w_{e}$
+            \EndIf
+        \EndFor
+        \State \Return $bestW$ \Comment{Returns the best weights}
+    \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[h]\label{task1:generator:figure}
+    \centering
+    \includegraphics[width=\linewidth]{task1/generator-architecture-h.png}
+    \caption{Generator Architecture}
+    \begin{fullwidth}[innermargin=-2cm,width=\linewidth+4cm,nobreak]
+        \begin{minipage}[t]{.5\textwidth}
+            \centering
+            \adjustbox{valign=t}{\includegraphics[scale=0.5]{task1/self-attn.jpg}}
+            \\Self Attention Block
+        \end{minipage}
+        \begin{minipage}[t]{.5\textwidth}
+            \centering
+            \adjustbox{valign=t}{\includegraphics[scale=0.31]{task1/cbam.jpg}}
+        \end{minipage}
+    \end{fullwidth}
+\end{figure}
+
+\begin{figure}[H]\label{task1:sample-images}
+    \centering
+    \includegraphics[width=0.75\linewidth]{task1/originals.jpg}
+    \vspace{-10pt}
+    \caption{Original (resized 256x256). Top row: Raw, Bottom row: Cartoon}
+    \vspace{12pt}
+    \includegraphics[width=0.75\linewidth]{task1/top2.jpg}
+    \vspace{-10pt}
+    \caption{128x128 Avg GMS: 4.47829}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{task1/top1.jpg}
+    \vspace{-10pt}
+    \caption{256x256, Stage 1: Batch Size 3, Avg GMS: 3.72523}
+    \vspace{12pt}
+    \includegraphics[width=0.75\linewidth]{task1/top3-3-42.jpg}
+    \vspace{-10pt}
+    \caption{256x256, Stage 2: Batch Size 2, Avg GMS: 3.42415}
+    \vspace{12pt}
+    \includegraphics[width=0.75\linewidth]{task1/top4-3-39.jpg}
+    \vspace{-10pt}
+    \caption{256x256, Stage 3: Batch Size 1, Avg GMS: 3.39350}
+\end{figure}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \textbf{Stage / Direction} & \textbf{FID} $\downarrow$ & \textbf{IS} $\uparrow$ & \textbf{GMS} $\downarrow$ & \textbf{Avg GMS} $\downarrow$ \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 1}} \\
+    \hline
+    Raw to Cartoon     & 46.70193     & 2.41466 ± 0.24392   & 4.39783    & \multirow{2}{*}{3.85666} \\
+    Cartoon to Raw     & 39.83461         & 3.62382 ± 0.23992        & 3.31548        &            \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 2}} \\
+    \hline
+    Raw to Cartoon     & 31.65506     & 2.26991 ± 0.15301   & 3.73436    & \multirow{2}{*}{3.42423} \\
+    Cartoon to Raw     & 35.19875     & 3.63003 ± 0.37498   & 3.11392    &            \\
+    \hline
+    \multicolumn{5}{|c|}{\textbf{Stage 3}} \\
+    \hline
+    Raw to Cartoon     & 29.50367     & 2.24014 ± 0.14796   & 3.62911    & \multirow{2}{*}{3.39350} \\
+    Cartoon to Raw     & 34.65820     & 3.47544 ± 0.26479   & 3.15789    &            \\
+    \hline
+    \end{tabular}
+    \caption{Evaluation metrics across stages, best results taken from each stage}
+    \label{tab:staged-eval}
+\end{table}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{task1/stage1_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 1 training}
+\end{figure}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{task1/stage2_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 2 training}
+    \vspace{12pt}
+    \includegraphics[width=0.8\linewidth]{task1/stage3_loss.jpg}
+    \vspace{-10pt}
+    \caption{Loss curves for Stage 3 training}
+\end{figure}
+
+\section{Task 2}\label{task2:appendix}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task2/discriminatorArchitecture.jpg}
+    \caption{Task 2: Discriminator Architecture}\label{task2:discriminator-architecture}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{task2/poke-fail1.jpg}
+    \vspace{-10pt}
+    \caption{Unacceptable style transfer with Pokémon Official Art}\label{fig:poke-fail1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \vspace{-6pt}
+    \includegraphics[width=0.75\textwidth]{task2/poke-fail2.jpg}
+    \vspace{-10pt}
+    \caption{Unsatisfactory results from tightly paired dataset}\label{fig:poke-fail2}
+\end{figure}
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{task2/vq-block.jpg}
@@ -537,8 +543,6 @@ In summary, our work inherits the learnings from Task 1 by introducing modificat
 \end{figure}
 
 \subsection{Randomly Paired vs Supervised Paired Dataset Preference}
-
-
 \begin{minipage}[t]{.5\textwidth}\label{fig:survey}
     \centering
     \adjustbox{valign=t}{\includegraphics[width=0.9\textwidth]{task2/subjectivePolling.png}}
@@ -562,9 +566,5 @@ In summary, our work inherits the learnings from Task 1 by introducing modificat
     \vspace{12pt}
     \label{fig:failed-vq}
 \end{figure}
-
-
-\bibliographystyle{plain}
-\bibliography{references}  % Create a references.bib file with your citations
 
 \end{document}
